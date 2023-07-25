@@ -2,10 +2,11 @@ name: Build
 
 on:
   push:
-    # branches: [master]
+    # branches: [master] 
+    - nonexist # added
   pull_request:
     # branches: [master]
-
+    - nonexist # added
 jobs:
   build:
     runs-on: ubuntu-latest
