@@ -6,7 +6,7 @@ on:
     # branches: [master] 
   #pull_request:
     # branches: [master]
-sjobs:
+jobs: # added: changed from `sjobs` to `jobs`
   build:
     runs-on: ubuntu-latest
 
