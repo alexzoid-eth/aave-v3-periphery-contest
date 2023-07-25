@@ -1,9 +1,9 @@
 name: release-please
 on:
-  push:
-    branches:
+  workflow_dispatch: # added
+  #push:
+    #branches:
        # - master 
-       - main # added
 jobs:
   release-please:
     runs-on: ubuntu-latest

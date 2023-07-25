@@ -1,13 +1,12 @@
 name: Build
 
 on:
-  push:
+  workflow_dispatch: # added: workflow will only run when manually triggered
+  #push:
     # branches: [master] 
-    - main # added
-  pull_request:
+  #pull_request:
     # branches: [master]
-    - nonexist # added
-jobs:
+sjobs:
   build:
     runs-on: ubuntu-latest
 
