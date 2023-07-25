@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     # branches: [master] 
-    - nonexist # added
+    - main # added
   pull_request:
     # branches: [master]
     - nonexist # added
