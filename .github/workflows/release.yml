@@ -1,6 +1,6 @@
 name: release-please
 on:
-  workflow_dispatch: # added
+  workflow_dispatch: # added: workflow will only run when manually triggered 
   #push:
     #branches:
        # - master 
