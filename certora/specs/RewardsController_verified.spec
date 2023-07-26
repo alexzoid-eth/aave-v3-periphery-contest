@@ -1,5 +1,23 @@
 import "methods/Methods_base.spec";
 
+using DummyERC20_rewardToken as _DummyERC20_rewardToken;
+using TransferStrategyHarness as _TransferStrategyHarness;
+using DummyERC20_AToken as _DummyERC20_AToken;
+
+/////////////////// Methods ////////////////////////
+
+    methods {
+        // Harness
+        function getRewardToken(uint256) external returns (address) envfree;
+        function getRewardsListLength() external returns (uint256) envfree;
+        function getAssetToken(uint256) external returns (address) envfree;
+        function getAssetsListLength() external returns (uint256) envfree;
+
+        // RewardsController envfree
+        function getRewardOracle(address) external returns (address) envfree;
+        function getTransferStrategy(address) external returns (address) envfree;
+    }
+
 ///////////////// Definitions ///////////////////////
 
 definition CLAIM_REWARDS_FUNCTIONS(method f) returns bool = 
@@ -19,7 +37,13 @@ definition HANDLE_FUNCTION(method f) returns bool =
 // A cvl function for precondition assumptions 
 function setup(env e) {
     require e.msg.sender != 0;
+    require e.msg.sender != currentContract;
     require e.block.timestamp != 0;
+    require getRewardsListLength() == 1;
+    require getRewardToken(0) == _DummyERC20_rewardToken;
+    require getTransferStrategy(_DummyERC20_rewardToken) == _TransferStrategyHarness;
+    require getAssetsListLength() == 1;
+    require getAssetToken(0) == _DummyERC20_AToken;
 }
 
 // Ghost copy of RewardsController._authorizedClaimers[]
@@ -64,6 +88,20 @@ hook Sload address reward _rewardOracle[KEY address oracle] STORAGE {
     require ghostAuthorizedClaimers[reward] == oracle;
 }
 
+// Ghost copy of RewardsDistributor._isRewardEnabled[]
+
+ghost mapping(address => bool) ghostIsRewardEnabled {
+    init_state axiom forall address x. ghostIsRewardEnabled[x] == false;
+}
+
+hook Sstore _isRewardEnabled[KEY address reward] bool enabled STORAGE {
+    ghostIsRewardEnabled[reward] = enabled;
+}
+
+hook Sload bool enabled _isRewardEnabled[KEY address reward] STORAGE {
+    require ghostIsRewardEnabled[reward] == enabled;
+}
+
 ///////////////// Properties ///////////////////////
 
 // [bug1] Possibility of update user asset data
@@ -95,11 +133,6 @@ rule claimRewardsToZeroAddress(env e, address[] assets, uint256 amount, address 
 rule claimAllRewardsReturnClaimedAmounts(env e, address[] assets, address to) {
 
     setup(e);
-
-    address[] rewardsListBefore;
-    uint256[] unclaimedAmountsBefore;
-    rewardsListBefore, unclaimedAmountsBefore = getAllUserRewards(e, assets, e.msg.sender);
-    require unclaimedAmountsBefore[0] == 0;
 
     address[] rewardsList;
     uint256[] claimedAmounts;

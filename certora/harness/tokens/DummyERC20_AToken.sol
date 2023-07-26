@@ -6,14 +6,8 @@ import {IPool} from '@aave/core-v3/contracts/interfaces/IPool.sol';
 
 contract DummyERC20_AToken is MintableIncentivizedERC20 {
     
-      constructor(
-    IPool pool,
-    string memory name,
-    string memory symbol,
-    uint8 decimals
-  ) MintableIncentivizedERC20(pool, name, symbol, decimals) {
-    // Intentionally left blank
-  }
+    constructor(IPool pool, string memory name, string memory symbol, uint8 decimals) 
+        MintableIncentivizedERC20(pool, name, symbol, decimals) { }
 
     function scaledTotalSupply() public view returns (uint256) {
         return super.totalSupply();
