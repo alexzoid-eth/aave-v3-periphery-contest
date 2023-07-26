@@ -6,17 +6,20 @@ using DummyERC20_AToken as _DummyERC20_AToken;
 
 /////////////////// Methods ////////////////////////
 
-    methods {
-        // Harness
-        function getRewardToken(uint256) external returns (address) envfree;
-        function getRewardsListLength() external returns (uint256) envfree;
-        function getAssetToken(uint256) external returns (address) envfree;
-        function getAssetsListLength() external returns (uint256) envfree;
+methods {
+    // Harness envfree
+    function getRewardToken(uint256) external returns (address) envfree;
+    function getRewardsListLength() external returns (uint256) envfree;
+    function getAssetToken(uint256) external returns (address) envfree;
+    function getAssetsListLength() external returns (uint256) envfree;
+    function getAssetAvailableReward(address, uint128) external returns (address) envfree;
+    function getAssetAvailableRewardsCount(address) external returns (uint128) envfree;
 
-        // RewardsController envfree
-        function getRewardOracle(address) external returns (address) envfree;
-        function getTransferStrategy(address) external returns (address) envfree;
-    }
+    // RewardsController envfree
+    function getRewardOracle(address) external returns (address) envfree;
+    function getTransferStrategy(address) external returns (address) envfree;
+    function getAssetDecimals(address) external returns (uint8) envfree;
+}
 
 ///////////////// Definitions ///////////////////////
 
@@ -44,9 +47,11 @@ function setup(env e) {
     require getTransferStrategy(_DummyERC20_rewardToken) == _TransferStrategyHarness;
     require getAssetsListLength() == 1;
     require getAssetToken(0) == _DummyERC20_AToken;
+    require getAssetAvailableReward(_DummyERC20_AToken, 0) == _DummyERC20_rewardToken;
+    require getAssetAvailableRewardsCount(_DummyERC20_AToken) == 1;
 }
 
-// Ghost copy of RewardsController._authorizedClaimers[]
+// Ghost copy of _authorizedClaimers[]
 
 ghost mapping(address => address) ghostAuthorizedClaimers {
     init_state axiom forall address x. ghostAuthorizedClaimers[x] == 0;
@@ -60,7 +65,7 @@ hook Sload address claimer _authorizedClaimers[KEY address user] STORAGE {
     require ghostAuthorizedClaimers[user] == claimer;
 }
 
-// Ghost copy of RewardsController._transferStrategy[]
+// Ghost copy of _transferStrategy[]
 
 ghost mapping(address => address) ghostTransferStrategy {
     init_state axiom forall address x. ghostTransferStrategy[x] == 0;
@@ -74,7 +79,7 @@ hook Sload address reward _transferStrategy[KEY address strategy] STORAGE {
     require ghostAuthorizedClaimers[reward] == strategy;
 }
 
-// Ghost copy of RewardsController._rewardOracle[]
+// Ghost copy of _rewardOracle[]
 
 ghost mapping(address => address) ghostRewardOracle {
     init_state axiom forall address x. ghostRewardOracle[x] == 0;
@@ -88,7 +93,7 @@ hook Sload address reward _rewardOracle[KEY address oracle] STORAGE {
     require ghostAuthorizedClaimers[reward] == oracle;
 }
 
-// Ghost copy of RewardsDistributor._isRewardEnabled[]
+// Ghost copy of _isRewardEnabled[]
 
 ghost mapping(address => bool) ghostIsRewardEnabled {
     init_state axiom forall address x. ghostIsRewardEnabled[x] == false;
@@ -100,6 +105,26 @@ hook Sstore _isRewardEnabled[KEY address reward] bool enabled STORAGE {
 
 hook Sload bool enabled _isRewardEnabled[KEY address reward] STORAGE {
     require ghostIsRewardEnabled[reward] == enabled;
+}
+
+// Ghost copy of _assets[].availableRewardsCount
+
+ghost mapping (address => uint128) assetsAvailableRewardsCount {
+    init_state axiom forall address asset. assetsAvailableRewardsCount[asset] == 0;
+}
+
+hook Sstore _assets[KEY address asset].availableRewardsCount uint128 val STORAGE {
+    assetsAvailableRewardsCount[asset] = val;
+}
+
+// Ghost copy of _assets[].decimals
+
+ghost mapping (address => uint8) assetsDecimals {
+    init_state axiom forall address asset. assetsDecimals[asset] == 0;
+}
+
+hook Sstore _assets[KEY address asset].decimals uint8 val STORAGE {
+    assetsDecimals[asset] = val;
 }
 
 ///////////////// Properties ///////////////////////
