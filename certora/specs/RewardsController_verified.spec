@@ -2,17 +2,25 @@ import "methods/Methods_base.spec";
 
 ///////////////// Properties ///////////////////////
 
-// Property: only an authorized user or the user itself can cause a reduction in accrued rewards for this user
-rule onlyAuthorizeCanDecrease(method f) filtered { f -> !f.isView } {
+// [certora/bug1.patch] 
+// TODO
 
-    address user; address reward;
-    uint256 before = getUserAccruedRewards(user, reward);
+// [certora/bug2.patch] Claiming rewards to zero address should revert
+rule claimRewardsToZeroAddress(env e, address[] assets, uint256 amount, address to, address reward) {
 
-    env e;
-    calldataarg args;
-    f(e,args);
+    require e.msg.sender != 0;
 
-    uint256 after = getUserAccruedRewards(user, reward);
+    claimRewards@withrevert(e, assets, amount, to, reward);
 
-    assert after < before => (getClaimer(user) == e.msg.sender || user == e.msg.sender);
+    assert to == 0 => lastReverted;
+}
+
+// [participants/bug4.patch] Claiming rewards on behalf from or to zero address should revert
+rule claimRewardsOnBehalfFromToZeroAddress(env e, address[] assets, uint256 amount, address user, address to, address reward) {
+
+    require e.msg.sender != 0;
+
+    claimRewardsOnBehalf@withrevert(e, assets, amount, user, to, reward);
+
+    assert user == 0 || to == 0 => lastReverted;
 }
