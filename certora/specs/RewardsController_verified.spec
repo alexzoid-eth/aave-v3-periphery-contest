@@ -5,8 +5,10 @@ import "methods/Methods_base.spec";
 definition CLAIM_REWARDS_FUNCTIONS(method f) returns bool = 
     f.selector == sig:claimRewards(address[], uint256, address, address).selector
     || f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector
-    || f.selector == sig:claimRewardsToSelf(address[], uint256, address).selector
-    || f.selector == sig:claimAllRewards(address[], address).selector
+    || f.selector == sig:claimRewardsToSelf(address[], uint256, address).selector;
+
+definition CLAIM_ALL_REWARDS_FUNCTIONS(method f) returns bool = 
+    f.selector == sig:claimAllRewards(address[], address).selector
     || f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector;
 
 definition HANDLE_FUNCTION(method f) returns bool = 
@@ -66,7 +68,7 @@ hook Sload address reward _rewardOracle[KEY address oracle] STORAGE {
 
 // [bug1] Possibility of update user asset data
 rule possibleToUserDataUpdate(env e, method f, calldataarg args1, calldataarg args2) 
-    filtered { f -> CLAIM_REWARDS_FUNCTIONS(f) || HANDLE_FUNCTION(f) } {
+    filtered { f -> CLAIM_REWARDS_FUNCTIONS(f) || CLAIM_ALL_REWARDS_FUNCTIONS(f) || HANDLE_FUNCTION(f) } {
     
     setup(e);
 
@@ -89,8 +91,22 @@ rule claimRewardsToZeroAddress(env e, address[] assets, uint256 amount, address 
     assert to == 0 => lastReverted;
 }
 
-// [bug3] TODO
+// [bug3] Possibility of returning array of claimed amounts while claiming all rewards 
+rule claimAllRewardsReturnClaimedAmounts(env e, address[] assets, address to) {
 
+    setup(e);
+
+    address[] rewardsListBefore;
+    uint256[] unclaimedAmountsBefore;
+    rewardsListBefore, unclaimedAmountsBefore = getAllUserRewards(e, assets, e.msg.sender);
+    require unclaimedAmountsBefore[0] == 0;
+
+    address[] rewardsList;
+    uint256[] claimedAmounts;
+    rewardsList, claimedAmounts = claimAllRewards(e, assets, to);
+
+    satisfy(claimedAmounts[0] > 0);
+}
 
 // [bug4] Claiming rewards on behalf from or to zero address should revert
 rule claimRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, uint256 amount, address user, address to, address reward) {
