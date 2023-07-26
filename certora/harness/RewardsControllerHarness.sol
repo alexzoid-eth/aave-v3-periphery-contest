@@ -2,6 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {RewardsController} from '../../contracts/rewards/RewardsController.sol';
+import {RewardsDataTypes} from '../../contracts/rewards/libraries/RewardsDataTypes.sol';
 
 contract RewardsControllerHarness is RewardsController {
     
