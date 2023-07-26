@@ -130,16 +130,19 @@ hook Sstore _assets[KEY address asset].decimals uint8 val STORAGE {
 ///////////////// Properties ///////////////////////
 
 // [bug1] Possibility of update user asset data
-rule possibleToUserDataUpdate(env e, method f, calldataarg args1, calldataarg args2) 
+rule possibleToUserDataUpdate(env e, method f, calldataarg args, address user, address asset, address reward) 
     filtered { f -> CLAIM_REWARDS_FUNCTIONS(f) || CLAIM_ALL_REWARDS_FUNCTIONS(f) || HANDLE_FUNCTION(f) } {
     
     setup(e);
 
-    uint256 indexBefore = getUserAssetIndex(args1);
+    require asset == _DummyERC20_AToken;
+    require reward == _DummyERC20_rewardToken;
 
-    f(e, args2);
+    uint256 indexBefore = getUserAssetIndex(user, asset, reward);
 
-    uint256 indexAfter = getUserAssetIndex(args1);
+    f(e, args);
+
+    uint256 indexAfter = getUserAssetIndex(user, asset, reward);
 
     satisfy(indexBefore != indexAfter);
 }

@@ -15,14 +15,14 @@ fi
 DIR_PATH="$1" # Capture the directory path from the first parameter
 shift 1 # shift arguments to exclude the first one
 
-MSG="[run] $@"
+MSG="[run_multi] $@"
 
 # Check if the next argument is a bug number
 if [[ $1 =~ ^[0-9]+$ ]]
 then
   FILE_NAME="bug$1"
   shift 1  # shift arguments to exclude the first one (which is now the bug number)
-  MSG="[prove $FILE_NAME] $@"
+  MSG="[prove_multi $FILE_NAME] $@"
 fi
 
 PATCH_PATH="certora/tests/${DIR_PATH}/${FILE_NAME}.patch"
@@ -30,9 +30,9 @@ PATCH_PATH="certora/tests/${DIR_PATH}/${FILE_NAME}.patch"
 # If the patch file exists than apply and restore a bug
 if [ -f "$PATCH_PATH" ]; then
     git apply "$PATCH_PATH"
-    certoraRun certora/conf/verifyRewardsController_verified.conf --send_only --msg "${MSG}" "$@" # pass all other parameters to certoraRun
+    certoraRun certora/conf/verifyRewardsController_multiReward_verified.conf --send_only --msg "${MSG}" "$@" # pass all other parameters to certoraRun
     git apply -R "$PATCH_PATH"
 # Run without patching 
 else
-    certoraRun certora/conf/verifyRewardsController_verified.conf --send_only --msg "${MSG}" "$@" 
+    certoraRun certora/conf/verifyRewardsController_multiReward_verified.conf --send_only --msg "${MSG}" "$@" 
 fi
