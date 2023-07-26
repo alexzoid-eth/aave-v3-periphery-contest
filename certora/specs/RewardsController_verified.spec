@@ -91,12 +91,33 @@ rule claimRewardsToZeroAddress(env e, address[] assets, uint256 amount, address 
 
 // [bug3] TODO
 
+
 // [bug4] Claiming rewards on behalf from or to zero address should revert
 rule claimRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, uint256 amount, address user, address to, address reward) {
 
     setup(e);
 
     claimRewardsOnBehalf@withrevert(e, assets, amount, user, to, reward);
+
+    assert user == 0 || to == 0 => lastReverted;
+}
+
+// [bug5] Claiming all rewards to zero address should revert
+rule claimAllRewardsToZeroAddress(env e, address[] assets, address to) {
+
+    setup(e);
+
+    claimAllRewards@withrevert(e, assets, to);
+
+    assert to == 0 => lastReverted;
+}
+
+// [bug6] Claiming all rewards on behalf from or to zero address should revert
+rule claimAllRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, address user, address to) {
+
+    setup(e);
+
+    claimAllRewardsOnBehalf@withrevert(e, assets, user, to);
 
     assert user == 0 || to == 0 => lastReverted;
 }
