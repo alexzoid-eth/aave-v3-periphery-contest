@@ -29,6 +29,7 @@ methods {
     function getRewardOracle(address) external returns (address) envfree;
     function getTransferStrategy(address) external returns (address) envfree;
     function getAssetDecimals(address) external returns (uint8) envfree;
+    function getEmissionManager() external returns (address) envfree;
 }
 
 ///////////////// Definitions ///////////////////////
@@ -50,9 +51,15 @@ definition CLAIM_ALL_REWARDS_FUNCTIONS(method f) returns bool =
 definition HANDLE_FUNCTION(method f) returns bool = 
     f.selector == sig:handleAction(address, uint256, uint256).selector;
 
-definition ONLY_AUTHORIZED_CLAIMERS(method f) returns bool = 
+definition ONLY_AUTHORIZED_CLAIMERS_FUNCTIONS(method f) returns bool = 
     f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector
     || f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector;
+
+definition ONLY_EMISSION_MANAGER_FUNCTIONS(method f) returns bool = 
+    f.selector == sig:configureAssets(RewardsDataTypes.RewardsConfigInput[]).selector
+    || f.selector == sig:setTransferStrategy(address, address).selector
+    || f.selector == sig:setRewardOracle(address, address).selector
+    || f.selector == sig:setClaimer(address, address).selector;
 
 ///////////////// Functions ///////////////////////
 
@@ -270,7 +277,7 @@ rule claimAllRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, address
 
 // [bug7] onlyAuthorizedClaimers() security modifier
 rule integrityOnlyAuthorizedClaimers(method f, env e, address[] assets, uint256 amount, address user, address to, address reward) 
-    filtered { f -> ONLY_AUTHORIZED_CLAIMERS(f) } {
+    filtered { f -> ONLY_AUTHORIZED_CLAIMERS_FUNCTIONS(f) } {
     
     setup(e);
     setupUser(e, user);
@@ -282,4 +289,14 @@ rule integrityOnlyAuthorizedClaimers(method f, env e, address[] assets, uint256 
     }
 
     assert e.msg.sender == getClaimer(user);
+}
+
+// [bug8] onlyEmissionManager() security modifier
+rule integrityOnlyEmissionManager(method f, env e, calldataarg args) filtered { f -> ONLY_EMISSION_MANAGER_FUNCTIONS(f) } {
+
+    setup(e);
+
+    f(e, args);
+
+    assert e.msg.sender == getEmissionManager();
 }
