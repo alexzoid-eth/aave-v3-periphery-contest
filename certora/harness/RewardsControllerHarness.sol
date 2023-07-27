@@ -2,6 +2,10 @@
 pragma solidity ^0.8.10;
 
 import {RewardsController} from '../../contracts/rewards/RewardsController.sol';
+import {RewardsDataTypes} from '../../contracts/rewards/libraries/RewardsDataTypes.sol';
+import {ITransferStrategyBase} from '../../contracts/rewards/interfaces/ITransferStrategyBase.sol';
+import {IEACAggregatorProxy} from '../../contracts/misc/interfaces/IEACAggregatorProxy.sol';
+import {IScaledBalanceToken} from '@aave/core-v3/contracts/interfaces/IScaledBalanceToken.sol';
 
 contract RewardsControllerHarness is RewardsController {
 
@@ -11,7 +15,7 @@ contract RewardsControllerHarness is RewardsController {
         return _assets[asset].rewards[reward].index;
     }
 
-    function getAssetRewardEmissionPerSecond(address asset, address reward) external view returns (uint256) {
+    function getAssetRewardEmissionPerSecond(address asset, address reward) external view returns (uint88) {
         return _assets[asset].rewards[reward].emissionPerSecond;
     }
 
@@ -19,7 +23,7 @@ contract RewardsControllerHarness is RewardsController {
         return _assets[asset].rewards[reward].lastUpdateTimestamp;
     }
 
-    function getAssetRewardDistributionEnd(address asset, address reward) external view returns (uint256) {
+    function getAssetRewardDistributionEnd(address asset, address reward) external view returns (uint32) {
         return _assets[asset].rewards[reward].distributionEnd;
     }
 
@@ -31,12 +35,34 @@ contract RewardsControllerHarness is RewardsController {
         return _rewardsList.length;
     }
 
+    function isRewardInList(address reward) external view returns (bool) {
+        uint256 length = _rewardsList.length;
+        for(uint i; i < length; ++i) {
+            if(_rewardsList[i] == reward) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     function getAssetToken(uint256 i) external view returns (address) {
         return _assetsList[i];
     }
 
     function getAssetsListLength() external view returns (uint256) {
         return _assetsList.length;
+    }
+
+    function isAssetInList(address asset) external view returns (bool) {
+        uint256 length = _assetsList.length;
+        for(uint i; i < length; ++i) {
+            if(_assetsList[i] == asset) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     function getAssetAvailableReward(address asset, uint128 i) external view returns (address) {
@@ -49,5 +75,23 @@ contract RewardsControllerHarness is RewardsController {
 
     function updateDataMultiple(address[] calldata assets, address user) external {
         _updateDataMultiple(user, _getUserAssetBalances(assets, user));
+    }
+
+    function configureAssetsHarness(
+        uint88 emissionPerSecond, 
+        uint32 distributionEnd,
+        address asset,
+        address reward,
+        address transferStrategy,
+        address rewardOracle
+    ) external {
+        RewardsDataTypes.RewardsConfigInput[] memory config = new RewardsDataTypes.RewardsConfigInput[](1);
+        config[0].emissionPerSecond = emissionPerSecond;
+        config[0].distributionEnd = distributionEnd;
+        config[0].asset = asset;
+        config[0].reward = reward;
+        config[0].transferStrategy = ITransferStrategyBase(transferStrategy);
+        config[0].rewardOracle = IEACAggregatorProxy(rewardOracle);
+        this.configureAssets(config);
     }
 }

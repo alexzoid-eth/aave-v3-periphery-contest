@@ -12,18 +12,21 @@ methods {
 
     // RewardsControllerHarness envfree
     function getAssetRewardIndex(address, address) external returns (uint256) envfree;
-    function getAssetRewardEmissionPerSecond(address, address) external returns (uint256) envfree;
+    function getAssetRewardEmissionPerSecond(address, address) external returns (uint88) envfree;
     function getAssetRewardLastUpdateTimestamp(address, address) external returns (uint256) envfree;
-    function getAssetRewardDistributionEnd(address, address) external returns (uint256) envfree;
+    function getAssetRewardDistributionEnd(address, address) external returns (uint32) envfree;
     function getRewardToken(uint256) external returns (address) envfree;
     function getRewardsListLength() external returns (uint256) envfree;
+    function isRewardInList(address) external returns (bool) envfree;
     function getAssetToken(uint256) external returns (address) envfree;
     function getAssetsListLength() external returns (uint256) envfree;
+    function isAssetInList(address) external returns (bool) envfree;
     function getAssetAvailableReward(address, uint128) external returns (address) envfree;
     function getAssetAvailableRewardsCount(address) external returns (uint128) envfree;
 
     // RewardsControllerHarness
     function updateDataMultiple(address) external;
+    function configureAssetsHarness(uint88, uint32, address, address, address, address) external;
 
     // RewardsController envfree
     function getRewardOracle(address) external returns (address) envfree;
@@ -192,7 +195,7 @@ rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets,
     // Precondition assumptions in _getAssetIndex()
     require getAssetRewardEmissionPerSecond(assets[0], reward) != 0;
     require getAssetRewardLastUpdateTimestamp(assets[0], reward) != e.block.timestamp;
-    require getAssetRewardLastUpdateTimestamp(assets[0], reward) < getAssetRewardDistributionEnd(assets[0], reward);
+    require getAssetRewardLastUpdateTimestamp(assets[0], reward) < require_uint256(getAssetRewardDistributionEnd(assets[0], reward));
 
     uint256 indexBefore = getAssetRewardIndex(assets[0], reward);
 
@@ -299,4 +302,40 @@ rule integrityOnlyEmissionManager(method f, env e, calldataarg args) filtered { 
     f(e, args);
 
     assert e.msg.sender == getEmissionManager();
+}
+
+// [bug9] configureAssets() integrity
+rule integrityConfigureAssets(
+    env e, 
+    uint88 emissionPerSecond, 
+    uint256 totalSupply,
+    uint32 distributionEnd,
+    address asset,
+    address reward,
+    address transferStrategy,
+    address rewardOracle
+    ) {
+
+    setup(e);
+
+    require e.msg.sender == getEmissionManager();
+    require asset == _DummyERC20_AToken;
+    require reward == _DummyERC20_rewardToken;
+
+    configureAssetsHarness(
+        e, 
+        emissionPerSecond, 
+        distributionEnd,
+        asset,
+        reward,
+        transferStrategy,
+        rewardOracle
+    );
+
+    assert emissionPerSecond == getAssetRewardEmissionPerSecond(asset, reward);
+    assert distributionEnd == getAssetRewardDistributionEnd(asset, reward);
+    assert isAssetInList(asset);
+    assert isRewardInList(reward);
+    assert transferStrategy == getTransferStrategy(reward);
+    assert rewardOracle == getRewardOracle(reward);
 }
