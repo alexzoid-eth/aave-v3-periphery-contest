@@ -73,6 +73,10 @@ contract RewardsControllerHarness is RewardsController {
         return _assets[asset].availableRewardsCount;
     }
 
+    function isRewardEnabled(address reward) external view returns (bool) {
+        return _isRewardEnabled[reward];
+    }
+
     function updateDataMultiple(address[] calldata assets, address user) external {
         _updateDataMultiple(user, _getUserAssetBalances(assets, user));
     }

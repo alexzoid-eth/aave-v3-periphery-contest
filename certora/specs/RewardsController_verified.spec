@@ -21,6 +21,7 @@ methods {
     function getAssetToken(uint256) external returns (address) envfree;
     function getAssetsListLength() external returns (uint256) envfree;
     function isAssetInList(address) external returns (bool) envfree;
+    function isRewardEnabled(address) external returns (bool) envfree;
     function getAssetAvailableReward(address, uint128) external returns (address) envfree;
     function getAssetAvailableRewardsCount(address) external returns (uint128) envfree;
 
@@ -93,7 +94,8 @@ function setup(env e) {
     
     require getAssetDecimals(_DummyERC20_AToken) > 0;
     require getAssetDecimals(_DummyERC20_AToken) < 77;
-    require _DummyERC20_AToken.scaledTotalSupply(e) >= require_uint256(1000 * 10 ^ getAssetDecimals(_DummyERC20_AToken));
+    require _DummyERC20_AToken.scaledTotalSupply(e) 
+        >= require_uint256(1000 * 10 ^ getAssetDecimals(_DummyERC20_AToken));
 
     require _DummyERC20_rewardToken != _TransferStrategyHarness;
     require _DummyERC20_rewardToken != _DummyERC20_AToken;
@@ -195,7 +197,8 @@ rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets,
     // Precondition assumptions in _getAssetIndex()
     require getAssetRewardEmissionPerSecond(assets[0], reward) != 0;
     require getAssetRewardLastUpdateTimestamp(assets[0], reward) != e.block.timestamp;
-    require getAssetRewardLastUpdateTimestamp(assets[0], reward) < require_uint256(getAssetRewardDistributionEnd(assets[0], reward));
+    require getAssetRewardLastUpdateTimestamp(assets[0], reward) 
+        < require_uint256(getAssetRewardDistributionEnd(assets[0], reward));
 
     uint256 indexBefore = getAssetRewardIndex(assets[0], reward);
 
@@ -295,7 +298,8 @@ rule integrityOnlyAuthorizedClaimers(method f, env e, address[] assets, uint256 
 }
 
 // [bug8] onlyEmissionManager() security modifier
-rule integrityOnlyEmissionManager(method f, env e, calldataarg args) filtered { f -> ONLY_EMISSION_MANAGER_FUNCTIONS(f) } {
+rule integrityOnlyEmissionManager(method f, env e, calldataarg args) 
+    filtered { f -> ONLY_EMISSION_MANAGER_FUNCTIONS(f) } {
 
     setup(e);
 
@@ -316,11 +320,13 @@ rule integrityConfigureAssets(
     address rewardOracle
     ) {
 
-    setup(e);
-
     require e.msg.sender == getEmissionManager();
-    require asset == _DummyERC20_AToken;
-    require reward == _DummyERC20_rewardToken;
+
+    // `asset` and `reward` are not in the list, will be added after _configureAssets() call
+    require getAssetDecimals(asset) == 0;
+    require getAssetsListLength() == 0 || getAssetsListLength() < 1000;
+    require isRewardEnabled(reward) == false;
+    require getRewardsListLength() == 0 || getRewardsListLength() < 1000;
 
     configureAssetsHarness(
         e, 
