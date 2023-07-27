@@ -22,6 +22,9 @@ methods {
     function getAssetAvailableReward(address, uint128) external returns (address) envfree;
     function getAssetAvailableRewardsCount(address) external returns (uint128) envfree;
 
+    // RewardsControllerHarness
+    function updateDataMultiple(address) external;
+
     // RewardsController envfree
     function getRewardOracle(address) external returns (address) envfree;
     function getTransferStrategy(address) external returns (address) envfree;
@@ -46,6 +49,10 @@ definition CLAIM_ALL_REWARDS_FUNCTIONS(method f) returns bool =
 
 definition HANDLE_FUNCTION(method f) returns bool = 
     f.selector == sig:handleAction(address, uint256, uint256).selector;
+
+definition ONLY_AUTHORIZED_CLAIMERS(method f) returns bool = 
+    f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector
+    || f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector;
 
 ///////////////// Functions ///////////////////////
 
@@ -198,22 +205,33 @@ rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets,
 rule claimRewardsToZeroAddress(env e, address[] assets, uint256 amount, address to, address reward) {
 
     setup(e);
+    setupUser(e, to);
 
     claimRewards@withrevert(e, assets, amount, to, reward);
 
     assert to == 0 => lastReverted;
 }
 
-// [bug3] Possibility of returning array of claimed amounts while claiming all rewards 
-rule claimAllRewardsReturnClaimedAmounts(env e, address[] assets, address to) {
+// TODO: long working time
+// [bug3] Claim rewards should return amount of accrued rewards
+rule claimAllRewardsReturnClaimedAmounts(env e, address[] assets, address user, address to) {
 
     setup(e);
+    setupUser(e, to);
+
+    require assets.length == 1;
+    require assets[0] == _DummyERC20_AToken;
+    require user == e.msg.sender;
+
+    updateDataMultiple(e, assets, user);
+
+    uint256 rewards = getUserAccruedRewards(user, _DummyERC20_rewardToken);
 
     address[] rewardsList;
     uint256[] claimedAmounts;
     rewardsList, claimedAmounts = claimAllRewards(e, assets, to);
 
-    satisfy(claimedAmounts[0] > 0);
+    assert claimedAmounts[0] == rewards;
 }
 
 // [bug4] Claiming rewards on behalf from or to zero address should revert
@@ -221,6 +239,7 @@ rule claimRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, uint256 am
 
     setup(e);
     setupUser(e, user);
+    setupUser(e, to);
 
     claimRewardsOnBehalf@withrevert(e, assets, amount, user, to, reward);
 
@@ -231,6 +250,7 @@ rule claimRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, uint256 am
 rule claimAllRewardsToZeroAddress(env e, address[] assets, address to) {
 
     setup(e);
+    setupUser(e, to);
 
     claimAllRewards@withrevert(e, assets, to);
 
@@ -246,4 +266,20 @@ rule claimAllRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, address
     claimAllRewardsOnBehalf@withrevert(e, assets, user, to);
 
     assert user == 0 || to == 0 => lastReverted;
+}
+
+// [bug7] onlyAuthorizedClaimers() security modifier
+rule integrityOnlyAuthorizedClaimers(method f, env e, address[] assets, uint256 amount, address user, address to, address reward) 
+    filtered { f -> ONLY_AUTHORIZED_CLAIMERS(f) } {
+    
+    setup(e);
+    setupUser(e, user);
+
+    if(f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector) {
+        claimRewardsOnBehalf(e, assets, amount, user, to, reward);
+    } else if(f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector) {
+        claimAllRewardsOnBehalf(e, assets, user, to);
+    }
+
+    assert e.msg.sender == getClaimer(user);
 }
