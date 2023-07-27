@@ -7,7 +7,14 @@ using DummyERC20_AToken as _DummyERC20_AToken;
 /////////////////// Methods ////////////////////////
 
 methods {
-    // Harness envfree
+    // AToken functions    
+    function _.scaledBalanceOf(address) external => DISPATCHER(true);
+
+    // RewardsControllerHarness envfree
+    function getAssetRewardIndex(address, address) external returns (uint256) envfree;
+    function getAssetRewardEmissionPerSecond(address, address) external returns (uint256) envfree;
+    function getAssetRewardLastUpdateTimestamp(address, address) external returns (uint256) envfree;
+    function getAssetRewardDistributionEnd(address, address) external returns (uint256) envfree;
     function getRewardToken(uint256) external returns (address) envfree;
     function getRewardsListLength() external returns (uint256) envfree;
     function getAssetToken(uint256) external returns (address) envfree;
@@ -23,24 +30,41 @@ methods {
 
 ///////////////// Definitions ///////////////////////
 
+definition CLAIM_REWARDS(method f) returns bool = 
+    f.selector == sig:claimRewards(address[], uint256, address, address).selector;
+
 definition CLAIM_REWARDS_FUNCTIONS(method f) returns bool = 
-    f.selector == sig:claimRewards(address[], uint256, address, address).selector
+    CLAIM_REWARDS(f)
     || f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector
     || f.selector == sig:claimRewardsToSelf(address[], uint256, address).selector;
 
+definition CLAIM_ALL_REWARDS(method f) returns bool = 
+    f.selector == sig:claimAllRewards(address[], address).selector;
+
 definition CLAIM_ALL_REWARDS_FUNCTIONS(method f) returns bool = 
-    f.selector == sig:claimAllRewards(address[], address).selector
-    || f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector;
+    CLAIM_ALL_REWARDS(f) || f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector;
 
 definition HANDLE_FUNCTION(method f) returns bool = 
     f.selector == sig:handleAction(address, uint256, uint256).selector;
 
 ///////////////// Functions ///////////////////////
 
-// A cvl function for precondition assumptions 
+// CVL functions for precondition assumptions 
+
+function setupUser(env e, address user) {
+    require user != 0;
+    require user != currentContract;
+    require user != _DummyERC20_AToken;
+    require user != _DummyERC20_rewardToken;
+    require user != _TransferStrategyHarness;
+
+    require _DummyERC20_AToken.scaledBalanceOf(e, user) <= _DummyERC20_AToken.scaledTotalSupply(e);
+}
+
 function setup(env e) {
-    require e.msg.sender != 0;
-    require e.msg.sender != currentContract;
+
+    setupUser(e, e.msg.sender);
+
     require e.block.timestamp != 0;
     require getRewardsListLength() == 1;
     require getRewardToken(0) == _DummyERC20_rewardToken;
@@ -49,6 +73,17 @@ function setup(env e) {
     require getAssetToken(0) == _DummyERC20_AToken;
     require getAssetAvailableReward(_DummyERC20_AToken, 0) == _DummyERC20_rewardToken;
     require getAssetAvailableRewardsCount(_DummyERC20_AToken) == 1;
+    
+    require getAssetDecimals(_DummyERC20_AToken) > 0;
+    require getAssetDecimals(_DummyERC20_AToken) < 77;
+    require _DummyERC20_AToken.scaledTotalSupply(e) >= require_uint256(1000 * 10 ^ getAssetDecimals(_DummyERC20_AToken));
+
+    require _DummyERC20_rewardToken != _TransferStrategyHarness;
+    require _DummyERC20_rewardToken != _DummyERC20_AToken;
+    require _DummyERC20_rewardToken != currentContract;
+    require _DummyERC20_AToken != currentContract;
+    require _DummyERC20_AToken != _TransferStrategyHarness;
+    require _TransferStrategyHarness != currentContract;
 }
 
 // Ghost copy of _authorizedClaimers[]
@@ -129,20 +164,32 @@ hook Sstore _assets[KEY address asset].decimals uint8 val STORAGE {
 
 ///////////////// Properties ///////////////////////
 
-// [bug1] Possibility of update user asset data
-rule possibleToUserDataUpdate(env e, method f, calldataarg args, address user, address asset, address reward) 
-    filtered { f -> CLAIM_REWARDS_FUNCTIONS(f) || CLAIM_ALL_REWARDS_FUNCTIONS(f) || HANDLE_FUNCTION(f) } {
-    
-    setup(e);
+// [bug1] Possibility of update reward index when executing claim rewards
+rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, address to, address reward) 
+    filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
 
-    require asset == _DummyERC20_AToken;
+    setup(e);
+    setupUser(e, to);
+
+    require assets.length == 1;
+    require assets[0] == _DummyERC20_AToken;
     require reward == _DummyERC20_rewardToken;
 
-    uint256 indexBefore = getUserAssetIndex(user, asset, reward);
+    // Precondition assumptions in _getAssetIndex()
+    require getAssetRewardEmissionPerSecond(assets[0], reward) != 0;
+    require getAssetRewardLastUpdateTimestamp(assets[0], reward) != e.block.timestamp;
+    require getAssetRewardLastUpdateTimestamp(assets[0], reward) < getAssetRewardDistributionEnd(assets[0], reward);
 
-    f(e, args);
+    uint256 indexBefore = getAssetRewardIndex(assets[0], reward);
 
-    uint256 indexAfter = getUserAssetIndex(user, asset, reward);
+    if(CLAIM_REWARDS(f)) {
+        uint256 amount;
+        claimRewards(e, assets, amount, to, reward);
+    } else if (CLAIM_ALL_REWARDS(f)) {
+        claimAllRewards(e, assets, to);
+    }
+
+    uint256 indexAfter = getAssetRewardIndex(assets[0], reward);
 
     satisfy(indexBefore != indexAfter);
 }
@@ -173,6 +220,7 @@ rule claimAllRewardsReturnClaimedAmounts(env e, address[] assets, address to) {
 rule claimRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, uint256 amount, address user, address to, address reward) {
 
     setup(e);
+    setupUser(e, user);
 
     claimRewardsOnBehalf@withrevert(e, assets, amount, user, to, reward);
 
@@ -193,6 +241,7 @@ rule claimAllRewardsToZeroAddress(env e, address[] assets, address to) {
 rule claimAllRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, address user, address to) {
 
     setup(e);
+    setupUser(e, user);
 
     claimAllRewardsOnBehalf@withrevert(e, assets, user, to);
 
