@@ -1,109 +1,11 @@
 import "methods/Methods_base.spec";
 
-using DummyERC20_rewardToken as _DummyERC20_rewardToken;
-using TransferStrategyHarness as _TransferStrategyHarness;
-using DummyERC20_AToken as _DummyERC20_AToken;
-
 /////////////////// Methods ////////////////////////
 
 methods {
-    // AToken functions    
-    function _.scaledBalanceOf(address) external => DISPATCHER(true);
-
-    // RewardsControllerHarness envfree
-    function getAssetRewardIndex(address, address) external returns (uint256) envfree;
-    function getAssetRewardEmissionPerSecond(address, address) external returns (uint88) envfree;
-    function getAssetRewardLastUpdateTimestamp(address, address) external returns (uint256) envfree;
-    function getAssetRewardDistributionEnd(address, address) external returns (uint32) envfree;
-    function getRewardToken(uint256) external returns (address) envfree;
-    function getRewardsListLength() external returns (uint256) envfree;
-    function isRewardInList(address) external returns (bool) envfree;
-    function getAssetToken(uint256) external returns (address) envfree;
-    function getAssetsListLength() external returns (uint256) envfree;
-    function isAssetInList(address) external returns (bool) envfree;
-    function isRewardEnabled(address) external returns (bool) envfree;
-    function getAssetAvailableReward(address, uint128) external returns (address) envfree;
-    function getAssetAvailableRewardsCount(address) external returns (uint128) envfree;
-
-    // RewardsControllerHarness
-    function updateDataMultiple(address) external;
-    function configureAssetsHarness(uint88, uint32, address, address, address, address) external;
-
-    // RewardsController envfree
-    function getRewardOracle(address) external returns (address) envfree;
-    function getTransferStrategy(address) external returns (address) envfree;
-    function getAssetDecimals(address) external returns (uint8) envfree;
-    function getEmissionManager() external returns (address) envfree;
 }
 
-///////////////// Definitions ///////////////////////
-
-definition CLAIM_REWARDS(method f) returns bool = 
-    f.selector == sig:claimRewards(address[], uint256, address, address).selector;
-
-definition CLAIM_REWARDS_FUNCTIONS(method f) returns bool = 
-    CLAIM_REWARDS(f)
-    || f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector
-    || f.selector == sig:claimRewardsToSelf(address[], uint256, address).selector;
-
-definition CLAIM_ALL_REWARDS(method f) returns bool = 
-    f.selector == sig:claimAllRewards(address[], address).selector;
-
-definition CLAIM_ALL_REWARDS_FUNCTIONS(method f) returns bool = 
-    CLAIM_ALL_REWARDS(f) || f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector;
-
-definition HANDLE_FUNCTION(method f) returns bool = 
-    f.selector == sig:handleAction(address, uint256, uint256).selector;
-
-definition ONLY_AUTHORIZED_CLAIMERS_FUNCTIONS(method f) returns bool = 
-    f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector
-    || f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector;
-
-definition ONLY_EMISSION_MANAGER_FUNCTIONS(method f) returns bool = 
-    f.selector == sig:configureAssets(RewardsDataTypes.RewardsConfigInput[]).selector
-    || f.selector == sig:setTransferStrategy(address, address).selector
-    || f.selector == sig:setRewardOracle(address, address).selector
-    || f.selector == sig:setClaimer(address, address).selector;
-
-///////////////// Functions ///////////////////////
-
-// CVL functions for precondition assumptions 
-
-function setupUser(env e, address user) {
-    require user != 0;
-    require user != currentContract;
-    require user != _DummyERC20_AToken;
-    require user != _DummyERC20_rewardToken;
-    require user != _TransferStrategyHarness;
-
-    require _DummyERC20_AToken.scaledBalanceOf(e, user) <= _DummyERC20_AToken.scaledTotalSupply(e);
-}
-
-function setup(env e) {
-
-    setupUser(e, e.msg.sender);
-
-    require e.block.timestamp != 0;
-    require getRewardsListLength() == 1;
-    require getRewardToken(0) == _DummyERC20_rewardToken;
-    require getTransferStrategy(_DummyERC20_rewardToken) == _TransferStrategyHarness;
-    require getAssetsListLength() == 1;
-    require getAssetToken(0) == _DummyERC20_AToken;
-    require getAssetAvailableReward(_DummyERC20_AToken, 0) == _DummyERC20_rewardToken;
-    require getAssetAvailableRewardsCount(_DummyERC20_AToken) == 1;
-    
-    require getAssetDecimals(_DummyERC20_AToken) > 0;
-    require getAssetDecimals(_DummyERC20_AToken) < 77;
-    require _DummyERC20_AToken.scaledTotalSupply(e) 
-        >= require_uint256(1000 * 10 ^ getAssetDecimals(_DummyERC20_AToken));
-
-    require _DummyERC20_rewardToken != _TransferStrategyHarness;
-    require _DummyERC20_rewardToken != _DummyERC20_AToken;
-    require _DummyERC20_rewardToken != currentContract;
-    require _DummyERC20_AToken != currentContract;
-    require _DummyERC20_AToken != _TransferStrategyHarness;
-    require _TransferStrategyHarness != currentContract;
-}
+///////////////// Ghosts & hooks ///////////////////////
 
 // Ghost copy of _authorizedClaimers[]
 
@@ -191,8 +93,8 @@ rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets,
     setupUser(e, to);
 
     require assets.length == 1;
-    require assets[0] == _DummyERC20_AToken;
-    require reward == _DummyERC20_rewardToken;
+    require assets[0] == ATokenAddress;
+    require reward == rewardTokenAddress;
 
     // Precondition assumptions in _getAssetIndex()
     require getAssetRewardEmissionPerSecond(assets[0], reward) != 0;
@@ -233,12 +135,12 @@ rule claimAllRewardsReturnClaimedAmounts(env e, address[] assets, address user, 
     setupUser(e, to);
 
     require assets.length == 1;
-    require assets[0] == _DummyERC20_AToken;
+    require assets[0] == ATokenAddress;
     require user == e.msg.sender;
 
     updateDataMultiple(e, assets, user);
 
-    uint256 rewards = getUserAccruedRewards(user, _DummyERC20_rewardToken);
+    uint256 rewards = getUserAccruedRewards(user, rewardTokenAddress);
 
     address[] rewardsList;
     uint256[] claimedAmounts;
@@ -344,4 +246,28 @@ rule integrityConfigureAssets(
     assert isRewardInList(reward);
     assert transferStrategy == getTransferStrategy(reward);
     assert rewardOracle == getRewardOracle(reward);
+}
+
+// [bug10] setRewardOracle() integrity
+rule integritySetRewardOracle(env e, address reward, address rewardOracle) {
+ 
+    require e.msg.sender == getEmissionManager();
+    require rewardOracle == oracleAddress;
+
+    setRewardOracle@withrevert(e, reward, rewardOracle);
+
+    assert !lastReverted => oracleAddress.latestAnswer(e) > 0 && rewardOracle == getRewardOracle(reward);
+}
+
+// [bug11] setTransferStrategy() integrity
+rule integritySetTransferStrategy(env e, address reward, address transferStrategy) {
+    
+    require e.msg.sender == getEmissionManager();
+    require transferStrategy == transferStrategyAddress;
+
+    setTransferStrategy(e, reward, transferStrategy);
+
+    assert transferStrategy != 0;
+    assert isContract(transferStrategy);
+    assert getTransferStrategy(reward) == transferStrategy;
 }
