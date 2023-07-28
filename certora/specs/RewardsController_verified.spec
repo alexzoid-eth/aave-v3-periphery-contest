@@ -1,11 +1,9 @@
 import "methods/Methods_base.spec";
 
-/////////////////// Methods ////////////////////////
-
-methods {
-}
-
 ///////////////// Ghosts & hooks ///////////////////////
+
+// Ghost for `_.latestAnswer()` summarize
+ghost ghostLatestAnswer() returns int256;
 
 // Ghost copy of _authorizedClaimers[]
 
@@ -248,26 +246,49 @@ rule integrityConfigureAssets(
     assert rewardOracle == getRewardOracle(reward);
 }
 
-// [bug10] setRewardOracle() integrity
-rule integritySetRewardOracle(env e, address reward, address rewardOracle) {
+// [bug10] setRewardOracle() integrity of latestAnswer()
+rule integritySetRewardOracleLatestAnswer(env e, address reward, address rewardOracle) {
  
     require e.msg.sender == getEmissionManager();
-    require rewardOracle == oracleAddress;
+
+    require ghostLatestAnswer() < 1;
 
     setRewardOracle@withrevert(e, reward, rewardOracle);
 
-    assert !lastReverted => oracleAddress.latestAnswer(e) > 0 && rewardOracle == getRewardOracle(reward);
+    assert lastReverted;
 }
 
-// [bug11] setTransferStrategy() integrity
+// [bug11] setRewardOracle() integrity
+rule integritySetRewardOracle(env e, address reward, address rewardOracle) {
+ 
+    require e.msg.sender == getEmissionManager();
+
+    setRewardOracle(e, reward, rewardOracle);
+
+    assert rewardOracle == getRewardOracle(reward);
+}
+
+// [bug12] setTransferStrategy() integrity of isContract()
+rule integritySetTransferStrategyIsContract(env e, address reward, address transferStrategy) {
+    
+    require e.msg.sender == getEmissionManager();
+    require transferStrategy != 0;
+
+    require isContract(transferStrategy) == false;
+
+    setTransferStrategy@withrevert(e, reward, transferStrategy);
+
+    assert lastReverted;
+}
+
+// [bug13] setTransferStrategy() integrity
 rule integritySetTransferStrategy(env e, address reward, address transferStrategy) {
     
     require e.msg.sender == getEmissionManager();
-    require transferStrategy == transferStrategyAddress;
+    require isContract(transferStrategy) == true;
 
     setTransferStrategy(e, reward, transferStrategy);
 
     assert transferStrategy != 0;
-    assert isContract(transferStrategy);
     assert getTransferStrategy(reward) == transferStrategy;
 }

@@ -3,7 +3,6 @@ import "./ERC20_methods.spec";
 using DummyERC20_AToken as ATokenAddress;
 using DummyERC20_rewardToken as rewardTokenAddress;
 using TransferStrategyHarness as transferStrategyAddress;
-using EACAggregatorProxyHarness as oracleAddress;
 
 /////////////////// Methods ////////////////////////
 
@@ -54,7 +53,7 @@ methods {
     function _.performTransfer(address, address, uint256) external => DISPATCHER(true);
 
     // Oracle 
-    function oracleAddress.latestAnswer() external returns (int256) envfree;
+    function _.latestAnswer() external => ghostLatestAnswer() expect int256 ALL;
 }
 
 ///////////////// DEFINITIONS //////////////////////

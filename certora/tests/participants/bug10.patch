@@ -7,7 +7,7 @@ index cfa4d82..434d81f 100644
  
    function _setRewardOracle(address reward, IEACAggregatorProxy rewardOracle) internal {
 -    require(rewardOracle.latestAnswer() > 0, 'ORACLE_MUST_RETURN_PRICE');
-+    require(rewardOracle.latestAnswer() == 0, 'ORACLE_MUST_RETURN_PRICE');
++    require(rewardOracle.latestAnswer() < 0, 'ORACLE_MUST_RETURN_PRICE');
      _rewardOracle[reward] = rewardOracle;
      emit RewardOracleUpdated(reward, address(rewardOracle));
    }

@@ -1,13 +1,13 @@
 diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
-index cfa4d82..0499361 100644
+index cfa4d82..79fbdd9 100644
 --- a/contracts/rewards/RewardsController.sol
 +++ b/contracts/rewards/RewardsController.sol
-@@ -347,7 +347,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
-     internal
-   {
-     require(address(transferStrategy) != address(0), 'STRATEGY_CAN_NOT_BE_ZERO');
--    require(_isContract(address(transferStrategy)) == true, 'STRATEGY_MUST_BE_CONTRACT');
-+    //require(_isContract(address(transferStrategy)) == true, 'STRATEGY_MUST_BE_CONTRACT');
+@@ -363,7 +363,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
  
-     _transferStrategy[reward] = transferStrategy;
- 
+   function _setRewardOracle(address reward, IEACAggregatorProxy rewardOracle) internal {
+     require(rewardOracle.latestAnswer() > 0, 'ORACLE_MUST_RETURN_PRICE');
+-    _rewardOracle[reward] = rewardOracle;
++    // _rewardOracle[reward] = rewardOracle;
+     emit RewardOracleUpdated(reward, address(rewardOracle));
+   }
+ }
