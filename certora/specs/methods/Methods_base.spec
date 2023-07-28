@@ -22,6 +22,8 @@ methods {
     function getAssetAvailableReward(address, uint128) external returns (address) envfree;
     function getAssetAvailableRewardsCount(address) external returns (uint128) envfree;
     function isContract(address) external returns (bool) envfree;
+    function getRevisionHarness() external returns (uint256) envfree;
+    function initialize(address) external envfree;
 
     // RewardsControllerHarness
     function updateDataMultiple(address) external;
@@ -32,6 +34,7 @@ methods {
     function getTransferStrategy(address) external returns (address) envfree;
     function getUserAssetIndex(address, address, address) external returns (uint256) envfree;
     function getClaimer(address) external returns (address) envfree;
+    function setClaimer(address, address) external envfree;
 
     // RewardsController
     function setRewardOracle(address, address) external;
@@ -83,7 +86,9 @@ definition ONLY_EMISSION_MANAGER_FUNCTIONS(method f) returns bool =
     f.selector == sig:configureAssets(RewardsDataTypes.RewardsConfigInput[]).selector
     || f.selector == sig:setTransferStrategy(address, address).selector
     || f.selector == sig:setRewardOracle(address, address).selector
-    || f.selector == sig:setClaimer(address, address).selector;
+    || f.selector == sig:setClaimer(address, address).selector
+    || f.selector == sig:setDistributionEnd(address, address, uint32).selector
+    || f.selector == sig:setEmissionPerSecond(address, address[], uint88[]).selector;
 
 ////////////////// FUNCTIONS //////////////////////
 

@@ -81,6 +81,10 @@ contract RewardsControllerHarness is RewardsController {
         return _isContract(contractAddress);
     }
 
+    function getRevisionHarness() external pure returns (uint256) {
+        return getRevision();
+    }
+
     function updateDataMultiple(address[] calldata assets, address user) external {
         _updateDataMultiple(user, _getUserAssetBalances(assets, user));
     }

@@ -292,3 +292,38 @@ rule integritySetTransferStrategy(env e, address reward, address transferStrateg
     assert transferStrategy != 0;
     assert getTransferStrategy(reward) == transferStrategy;
 }
+
+// [bug14] _isContract() integrity
+rule integrityIsContract(env e, address account) {
+    
+    require account == currentContract;
+    
+    assert isContract(account);
+}
+
+// [bug15] setClaimer() integrity
+rule integritySetClaimer(env e, address user, address caller) {
+
+    require e.msg.sender == getEmissionManager();
+
+    setClaimer(user, caller);
+
+    assert getClaimer(user) == caller;
+}
+
+// [bug16] getRevision() integrity
+rule integrityGetRevision() {
+    assert getRevisionHarness() == require_uint256(1);
+}
+
+// [bug17] initializer() security modifier
+rule initializeCalledOnce(address addr) {
+
+    initialize(addr);
+
+    initialize@withrevert(addr);
+
+    // Second call of `initialize()` always reverts
+    assert lastReverted;
+}
+
