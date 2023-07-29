@@ -490,6 +490,35 @@ rule integrityOnlyAuthorizedClaimers(method f, env e, address[] assets, uint256 
     assert e.msg.sender == getClaimer(user);
 }
 
+// [bugs 12-13, 52, 57] setTransferStrategy() integrity 
+rule integritySetTransferStrategy(env e, address reward, address transferStrategy) {
+    
+    setup(e);
+
+    // Checked in integrityOnlyEmissionManager() rule
+    require e.msg.sender == getEmissionManager();
+
+    setTransferStrategy@withrevert(e, reward, transferStrategy);
+
+    assert transferStrategy == 0 => lastReverted; // bug13
+    assert isContract(transferStrategy) == false => lastReverted; // bug12
+    assert !lastReverted => getTransferStrategy(reward) == transferStrategy; // bug57
+}
+
+// [bugs 8, 10, 11] setRewardOracle() integrity, never reverted with EmissionManager
+rule integritySetRewardOracle(env e, address reward, address rewardOracle) {
+    
+    setup(e);
+
+    // Checked in integrityOnlyEmissionManager() rule
+    require e.msg.sender == getEmissionManager();
+
+    setRewardOracle@withrevert(e, reward, rewardOracle);
+
+    assert ghostLatestAnswer() <= 0 => lastReverted; // bug10
+    assert !lastReverted => rewardOracle == getRewardOracle(reward); // bug11
+}
+
 // [1] Possibility of update reward index when executing claim rewards
 rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, address to, address reward) 
     filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
@@ -588,61 +617,6 @@ rule claimAllRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, address
     claimAllRewardsOnBehalf@withrevert(e, assets, user, to);
 
     assert user == 0 || to == 0 => lastReverted;
-}
-
-// [10] setRewardOracle() integrity of latestAnswer()
-rule integritySetRewardOracleLatestAnswer(env e, address reward, address rewardOracle) {
- 
-    require e.msg.sender == getEmissionManager();
-    require ghostLatestAnswer() < 1;
-
-    setRewardOracle@withrevert(e, reward, rewardOracle);
-
-    assert lastReverted;
-}
-
-// [11] setRewardOracle() integrity, never reverted with EmissionManager
-rule integritySetRewardOracle(env e, address reward, address rewardOracle) {
-    
-    setup(e);
-
-    require e.msg.sender == getEmissionManager();
-    require ghostLatestAnswer() > 0;
-
-    setRewardOracle@withrevert(e, reward, rewardOracle);
-
-    assert !lastReverted;
-    assert rewardOracle == getRewardOracle(reward);
-}
-
-// [12] setTransferStrategy() integrity of isContract()
-rule integritySetTransferStrategyIsContract(env e, address reward, address transferStrategy) {
-    
-    setup(e);
-
-    require e.msg.sender == getEmissionManager();
-    require transferStrategy != 0;
-
-    require isContract(transferStrategy) == false;
-
-    setTransferStrategy@withrevert(e, reward, transferStrategy);
-
-    assert lastReverted;
-}
-
-// [13] setTransferStrategy() integrity, never reverted with EmissionManager and transferStrategy is contract
-rule integritySetTransferStrategy(env e, address reward, address transferStrategy) {
-    
-    setup(e);
-
-    require e.msg.sender == getEmissionManager();
-    require transferStrategy != 0;
-    require isContract(transferStrategy) == true;
-
-    setTransferStrategy@withrevert(e, reward, transferStrategy);
-
-    assert !lastReverted;
-    assert getTransferStrategy(reward) == transferStrategy;
 }
 
 // [14] _isContract() integrity, never reverted

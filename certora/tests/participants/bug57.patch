@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..8089134 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -349,8 +349,6 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     require(address(transferStrategy) != address(0), 'STRATEGY_CAN_NOT_BE_ZERO');
+     require(_isContract(address(transferStrategy)) == true, 'STRATEGY_MUST_BE_CONTRACT');
+ 
+-    _transferStrategy[reward] = transferStrategy;
+-
+     emit TransferStrategyInstalled(reward, address(transferStrategy));
+   }
+ 
