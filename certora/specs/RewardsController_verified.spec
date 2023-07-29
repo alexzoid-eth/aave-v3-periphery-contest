@@ -495,14 +495,13 @@ rule integritySetTransferStrategy(env e, address reward, address transferStrateg
     
     setup(e);
 
-    // Checked in integrityOnlyEmissionManager() rule
-    require e.msg.sender == getEmissionManager();
-
     setTransferStrategy@withrevert(e, reward, transferStrategy);
+    bool reverted = lastReverted;
 
-    assert transferStrategy == 0 => lastReverted; // bug13
-    assert isContract(transferStrategy) == false => lastReverted; // bug12
-    assert !lastReverted => getTransferStrategy(reward) == transferStrategy; // bug57
+    assert e.msg.sender != getEmissionManager() => reverted; // bug52
+    assert transferStrategy == 0 => reverted; // bug13
+    assert isContract(transferStrategy) == false => reverted; // bug12
+    assert !reverted => getTransferStrategy(reward) == transferStrategy; // bug57
 }
 
 // [bugs 8, 10, 11] setRewardOracle() integrity, never reverted with EmissionManager
@@ -510,13 +509,12 @@ rule integritySetRewardOracle(env e, address reward, address rewardOracle) {
     
     setup(e);
 
-    // Checked in integrityOnlyEmissionManager() rule
-    require e.msg.sender == getEmissionManager();
-
     setRewardOracle@withrevert(e, reward, rewardOracle);
+    bool reverted = lastReverted;
 
-    assert ghostLatestAnswer() <= 0 => lastReverted; // bug10
-    assert !lastReverted => rewardOracle == getRewardOracle(reward); // bug11
+    assert e.msg.sender != getEmissionManager() => reverted; // bug8
+    assert ghostLatestAnswer() <= 0 => reverted; // bug10
+    assert !reverted => rewardOracle == getRewardOracle(reward); // bug11
 }
 
 // [1] Possibility of update reward index when executing claim rewards
@@ -699,4 +697,3 @@ rule getRewardsDataIntegrity(env e, address asset, address reward) {
     assert getAssetRewardLastUpdateTimestamp(asset, reward) == lastUpdateTimestamp;
     assert getAssetRewardDistributionEnd(asset, reward) == distributionEnd;
 }
-
