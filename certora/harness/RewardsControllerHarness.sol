@@ -9,13 +9,15 @@ import {IScaledBalanceToken} from '@aave/core-v3/contracts/interfaces/IScaledBal
 
 contract RewardsControllerHarness is RewardsController {
 
+    mapping(uint256 => address) public _rewardsMap;
+
     constructor(address emissionManager) RewardsController(emissionManager) {}
 
     function getAssetRewardIndex(address asset, address reward) external view returns (uint256) {
         return _assets[asset].rewards[reward].index;
     }
 
-    function getAssetRewardEmissionPerSecond(address asset, address reward) external view returns (uint88) {
+    function getAssetRewardEmissionPerSecond(address asset, address reward) external view returns (uint256) {
         return _assets[asset].rewards[reward].emissionPerSecond;
     }
 
@@ -23,8 +25,16 @@ contract RewardsControllerHarness is RewardsController {
         return _assets[asset].rewards[reward].lastUpdateTimestamp;
     }
 
-    function getAssetRewardDistributionEnd(address asset, address reward) external view returns (uint32) {
+    function getAssetRewardDistributionEnd(address asset, address reward) external view returns (uint256) {
         return _assets[asset].rewards[reward].distributionEnd;
+    }
+
+    function getAssetRewardUserIndex(address user, address asset, address reward) external view returns (uint256) {
+        return _assets[asset].rewards[reward].usersData[user].index;
+    }
+
+    function getAssetRewardUserAccrued(address user, address asset, address reward) external view returns (uint256) {
+        return _assets[asset].rewards[reward].usersData[user].accrued;
     }
 
     function getRewardToken(uint256 i) external view returns (address) {
@@ -33,6 +43,14 @@ contract RewardsControllerHarness is RewardsController {
 
     function getRewardsListLength() external view returns (uint256) {
         return _rewardsList.length;
+    }
+
+    function fillMapFromRewardsList(address[] memory rewardsList_) external {
+        uint256 key = 0; 
+        for (uint256 i = 0; i < rewardsList_.length; i++) {
+            _rewardsMap[key] = rewardsList_[i];
+            key++;
+        }
     }
 
     function isRewardInList(address reward) external view returns (bool) {
@@ -83,6 +101,10 @@ contract RewardsControllerHarness is RewardsController {
 
     function getRevisionHarness() external pure returns (uint256) {
         return getRevision();
+    }
+
+    function getEmissionManagerHarness() external view returns (address) {
+        return EMISSION_MANAGER;
     }
 
     function updateDataMultiple(address[] calldata assets, address user) external {
