@@ -111,6 +111,11 @@ contract RewardsControllerHarness is RewardsController {
         _updateDataMultiple(user, _getUserAssetBalances(assets, user));
     }
 
+    function updateRewardData(address asset, address reward, uint256 totalSupply, uint256 assetUnit) external returns (uint256, bool) {
+        RewardsDataTypes.RewardData storage rewardConfig = _assets[asset].rewards[reward];
+        return _updateRewardData(rewardConfig, totalSupply, assetUnit);
+    }
+
     function configureAssetsHarness(
         uint88 emissionPerSecond, 
         uint32 distributionEnd,

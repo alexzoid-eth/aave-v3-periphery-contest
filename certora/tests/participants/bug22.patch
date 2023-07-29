@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..d838a0f 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -84,7 +84,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     override
+     returns (uint256)
+   {
+-    return _assets[asset].rewards[reward].distributionEnd;
++    return _assets[asset].rewards[reward].lastUpdateTimestamp;
+   }
+ 
+   /// @inheritdoc IRewardsDistributor

@@ -31,6 +31,7 @@ methods {
 
     // RewardsControllerHarness
     function updateDataMultiple(address) external;
+    function updateRewardData(address, address, uint256, uint256) external;
     function configureAssetsHarness(uint88, uint32, address, address, address, address) external;
 
     // RewardsController envfree
@@ -161,9 +162,14 @@ function setup(env e) {
 // Ghost for `_.latestAnswer()` summarize
 ghost ghostLatestAnswer() returns int256;
 
-// Assuming that `initializing` initially is `false` because it chnaged only inside an `initialize()` function
+// VersionedInitializable initial values
+
 hook Sload bool val initializing STORAGE {
     require val == false;
+}
+
+hook Sload uint256 val lastInitializedRevision STORAGE {
+    require val == 0;
 }
 
 // Ghost copy of _authorizedClaimers[]
@@ -290,7 +296,7 @@ hook Sload uint8 decimals _assets[KEY address asset].decimals STORAGE {
 
 ///////////////// Properties ///////////////////////
 
-// [16] initializer() security modifier, second call should revert
+// [bug 16] initializer() security modifier, second call of initialize() should revert
 rule initializeCalledOnce(env e1, env e2, address addr) {
 
     initialize@withrevert(e1, addr);
@@ -300,6 +306,188 @@ rule initializeCalledOnce(env e1, env e2, address addr) {
     bool secondCallReverted = lastReverted;
 
     assert !firstCallReverted => secondCallReverted;
+}
+
+// [bug 17] initialize() - first call should not revert
+rule initializeFirstCallShouldNotRevert(env e, address addr) {
+
+    setup(e);
+
+    initialize@withrevert(e, addr);
+
+    assert !lastReverted;
+}
+
+// [bugs 18-25] getters integrity
+rule integrityGetters(address asset, address reward, address user) {
+    assert getClaimer(user) == ghostAuthorizedClaimers[user]; // bug18
+    assert getRevisionHarness() == require_uint256(1); // bug19
+    assert getRewardOracle(reward) == ghostRewardOracle[reward]; // bug20
+    assert getTransferStrategy(reward) == ghostTransferStrategy[reward]; // bug21
+    assert getDistributionEnd(asset, reward) == require_uint256(getAssetRewardDistributionEnd(asset, reward)); //bug22
+    assert getUserAssetIndex(user, asset, reward) == getAssetRewardUserIndex(user, asset, reward); //bug23
+    assert getAssetDecimals(asset) == ghostAssetsDecimals[asset]; //bug24
+    assert getEmissionManager() == getEmissionManagerHarness(); //bug25
+} 
+
+// [bugs 26-37] getters should not revert 
+rule gettersShouldNotRevert(env e, method f, address asset, address reward, address user) 
+    filtered { f -> GETTERS_NEVER_REVERTED(f) } {
+
+    setup(e);
+
+    require asset == ATokenAddress;
+    require reward == rewardTokenAddress;
+
+    if(f.selector == sig:getClaimer(address).selector) {
+        getClaimer@withrevert(user); // bug26
+    } else if(f.selector == sig:getRevisionHarness().selector) {
+        getRevisionHarness@withrevert(); // bug27
+    } else if(f.selector == sig:getRewardOracle(address).selector) {
+        getRewardOracle@withrevert(reward); // bug28
+    } else if(f.selector == sig:getTransferStrategy(address).selector) {
+        getTransferStrategy@withrevert(reward); // bug29
+    } else if(f.selector == sig:getRewardsData(address, address).selector) {
+        getRewardsData@withrevert(asset, reward); // bug30
+    } else if(f.selector == sig:getDistributionEnd(address, address).selector) {
+        getDistributionEnd@withrevert(asset, reward); // bug31
+    } else if(f.selector == sig:getRewardsByAsset(address).selector) {
+        getRewardsByAsset@withrevert(asset); // bug32
+    } else if(f.selector == sig:getRewardsList().selector) {
+        getRewardsList@withrevert(); // bug33
+    } else if(f.selector == sig:getUserAssetIndex(address, address, address).selector) {
+        getUserAssetIndex@withrevert(user, asset, reward); // bug34
+    } else if(f.selector == sig:getUserAccruedRewards(address, address).selector) {
+        getUserAccruedRewards@withrevert(user, reward); // bug35
+    } else if(f.selector == sig:getAssetDecimals(address).selector) {
+        getAssetDecimals@withrevert(asset); // bug36
+    } else if(f.selector == sig:getEmissionManager().selector) {
+        getEmissionManager@withrevert(); // bug37
+    }
+
+    assert !lastReverted;
+}
+
+// [bugs 9, 38-50] configureAssets() integrity
+rule integrityConfigureAssets(
+    env e, 
+    uint88 emissionPerSecond, 
+    uint32 distributionEnd,
+    address asset,
+    address reward,
+    address transferStrategy,
+    address rewardOracle
+    ) {
+
+    require e.msg.sender == getEmissionManager();
+    require asset == ATokenAddress;
+    require reward == rewardTokenAddress;
+
+    // ATokenAddress will be added when zero decimals
+    bool zeroDecimals = getAssetDecimals(asset) == 0;
+
+    // rewardTokenAddress will be added when was not enabled
+    bool rewardEnabled;
+    require rewardEnabled == isRewardEnabled(reward);
+    bool rewardInList;
+    require rewardInList == isRewardInList(reward);
+
+    // add reward address to asset available rewards when zero timestamp
+    bool zeroTimeStamp = getAssetRewardLastUpdateTimestamp(asset, reward) == 0;
+
+    // revert when length reach uin256 limit 
+    require getAssetsListLength() < 1000;
+    require getRewardsListLength() < 1000;
+
+    uint128 availableRewardsCountBefore = getAssetAvailableRewardsCount(asset);
+
+    configureAssetsHarness(
+        e, 
+        emissionPerSecond, 
+        distributionEnd,
+        asset,
+        reward,
+        transferStrategy,
+        rewardOracle
+    );
+
+    uint128 availableRewardsCountAfter = getAssetAvailableRewardsCount(asset);
+
+    assert require_uint256(emissionPerSecond) == getAssetRewardEmissionPerSecond(asset, reward); // bug45
+    assert require_uint256(distributionEnd) == getAssetRewardDistributionEnd(asset, reward); // bug46
+    assert zeroDecimals => isAssetInList(asset); // bug39, bug40, bug41
+    assert !rewardEnabled => isRewardEnabled(reward) && isRewardInList(reward); // bug42, bug43, bug44
+    assert rewardEnabled => isRewardEnabled(reward) && rewardInList == isRewardInList(reward); // bug50
+    assert transferStrategy == getTransferStrategy(reward); // bug9
+    assert rewardOracle == getRewardOracle(reward); // bug38
+    assert zeroTimeStamp => availableRewardsCountAfter == require_uint128(availableRewardsCountBefore + require_uint128(1)); // bug47
+    assert zeroTimeStamp => getAssetAvailableReward(asset, availableRewardsCountBefore) == reward; // bug48
+    assert !zeroTimeStamp => availableRewardsCountAfter == availableRewardsCountBefore; // bug49
+}
+
+/*
+// TODO
+// [bug ] configureAssets() integrity of totalSupply
+rule integrityConfigureAssetsTotalSupply(
+    env e, 
+    uint88 emissionPerSecond, 
+    uint32 distributionEnd,
+    address asset,
+    address reward,
+    address transferStrategy,
+    address rewardOracle
+    ) {
+
+    setup(e);
+
+    require e.msg.sender == getEmissionManager();
+    require asset == ATokenAddress;
+    require reward == rewardTokenAddress;
+
+    configureAssetsHarness(
+        e, 
+        emissionPerSecond, 
+        distributionEnd,
+        asset,
+        reward,
+        transferStrategy,
+        rewardOracle
+    );
+
+    // updateRewardData() with the same params should not change contract's state
+    uint256 totalSupply = ATokenAddress.scaledTotalSupply(e);
+    uint8 decimals;
+    require decimals == ghostAssetsDecimals[asset];
+    storage storageBefore = lastStorage;
+    updateRewardData(e, asset, reward, totalSupply, decimals);
+    storage storageAfter = lastStorage;
+    assert storageBefore == storageAfter;
+}
+*/
+
+// [bugs 8, 51-55] onlyEmissionManager() security modifier
+rule integrityOnlyEmissionManager(method f, env e, calldataarg args) 
+    filtered { f -> ONLY_EMISSION_MANAGER_FUNCTIONS(f) } {
+
+    f(e, args);
+
+    assert e.msg.sender == getEmissionManager();
+}
+
+// [7, 56] onlyAuthorizedClaimers() security modifier
+rule integrityOnlyAuthorizedClaimers(method f, env e, address[] assets, uint256 amount, address user, address to, address reward) 
+    filtered { f -> ONLY_AUTHORIZED_CLAIMERS_FUNCTIONS(f) } {
+    
+    setup(e);
+    setupUser(e, user);
+
+    if(f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector) {
+        claimRewardsOnBehalf(e, assets, amount, user, to, reward);
+    } else if(f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector) {
+        claimAllRewardsOnBehalf(e, assets, user, to);
+    }
+
+    assert e.msg.sender == getClaimer(user);
 }
 
 // [1] Possibility of update reward index when executing claim rewards
@@ -402,69 +590,6 @@ rule claimAllRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, address
     assert user == 0 || to == 0 => lastReverted;
 }
 
-// [7] onlyAuthorizedClaimers() security modifier
-rule integrityOnlyAuthorizedClaimers(method f, env e, address[] assets, uint256 amount, address user, address to, address reward) 
-    filtered { f -> ONLY_AUTHORIZED_CLAIMERS_FUNCTIONS(f) } {
-    
-    setup(e);
-    setupUser(e, user);
-
-    if(f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector) {
-        claimRewardsOnBehalf(e, assets, amount, user, to, reward);
-    } else if(f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector) {
-        claimAllRewardsOnBehalf(e, assets, user, to);
-    }
-
-    assert e.msg.sender == getClaimer(user);
-}
-
-// [8] onlyEmissionManager() security modifier
-rule integrityOnlyEmissionManager(method f, env e, calldataarg args) 
-    filtered { f -> ONLY_EMISSION_MANAGER_FUNCTIONS(f) } {
-
-    f(e, args);
-
-    assert e.msg.sender == getEmissionManager();
-}
-
-// [9] configureAssets() integrity
-rule integrityConfigureAssets(
-    env e, 
-    uint88 emissionPerSecond, 
-    uint256 totalSupply,
-    uint32 distributionEnd,
-    address asset,
-    address reward,
-    address transferStrategy,
-    address rewardOracle
-    ) {
-
-    require e.msg.sender == getEmissionManager();
-
-    // `asset` and `reward` are not in the list, will be added after _configureAssets() call
-    require getAssetDecimals(asset) == 0;
-    require getAssetsListLength() == 0 || getAssetsListLength() < 1000;
-    require isRewardEnabled(reward) == false;
-    require getRewardsListLength() == 0 || getRewardsListLength() < 1000;
-
-    configureAssetsHarness(
-        e, 
-        emissionPerSecond, 
-        distributionEnd,
-        asset,
-        reward,
-        transferStrategy,
-        rewardOracle
-    );
-
-    assert require_uint256(emissionPerSecond) == getAssetRewardEmissionPerSecond(asset, reward);
-    assert require_uint256(distributionEnd) == getAssetRewardDistributionEnd(asset, reward);
-    assert isAssetInList(asset);
-    assert isRewardInList(reward);
-    assert transferStrategy == getTransferStrategy(reward);
-    assert rewardOracle == getRewardOracle(reward);
-}
-
 // [10] setRewardOracle() integrity of latestAnswer()
 rule integritySetRewardOracleLatestAnswer(env e, address reward, address rewardOracle) {
  
@@ -542,18 +667,6 @@ rule integritySetClaimer(env e, address user, address caller) {
     assert getClaimer(user) == caller;
 }
 
-// [] getters integrity
-rule integrityGetters(address asset, address reward, address user) {
-    assert getRevisionHarness() == require_uint256(1);
-    assert getClaimer(user) == ghostAuthorizedClaimers[user];
-    assert getRewardOracle(reward) == ghostRewardOracle[reward];
-    assert getTransferStrategy(reward) == ghostTransferStrategy[reward];
-    assert getDistributionEnd(asset, reward) == require_uint256(getAssetRewardDistributionEnd(asset, reward));
-    assert getAssetRewardUserIndex(user, asset, reward) == getUserAssetIndex(user, asset, reward);
-    assert getAssetDecimals(asset) == ghostAssetsDecimals[asset];
-    assert getEmissionManager() == getEmissionManagerHarness();
-} 
-
 // [] getRewardsList() integrity
 rule integrityGetRewardsList(env e) {
 
@@ -564,44 +677,6 @@ rule integrityGetRewardsList(env e) {
     // TODO: quantifier doesn't work
     //fillMapFromRewardsList(rewardsList);
     //assert (forall uint256 i . ghostRewardsList[i] == ghostRewardsMap[i]);
-}
-
-// [] these getters should not revert 
-rule gettersShouldNotRevert(env e, method f, address asset, address reward, address user) 
-    filtered { f -> GETTERS_NEVER_REVERTED(f) } {
-
-    setup(e);
-
-    require asset == ATokenAddress;
-    require reward == rewardTokenAddress;
-
-    if(f.selector == sig:getClaimer(address).selector) {
-        getClaimer@withrevert(user);
-    } else if(f.selector == sig:getRevisionHarness().selector) {
-        getRevisionHarness@withrevert();
-    } else if(f.selector == sig:getRewardOracle(address).selector) {
-        getRewardOracle@withrevert(reward);
-    } else if(f.selector == sig:getTransferStrategy(address).selector) {
-        getTransferStrategy@withrevert(reward);
-    } else if(f.selector == sig:getRewardsData(address, address).selector) {
-        getRewardsData@withrevert(asset, reward);
-    } else if(f.selector == sig:getDistributionEnd(address, address).selector) {
-        getDistributionEnd@withrevert(asset, reward);
-    } else if(f.selector == sig:getRewardsByAsset(address).selector) {
-        getRewardsByAsset@withrevert(asset);
-    } else if(f.selector == sig:getRewardsList().selector) {
-        getRewardsList@withrevert();
-    } else if(f.selector == sig:getUserAssetIndex(address, address, address).selector) {
-        getUserAssetIndex@withrevert(user, asset, reward);
-    } else if(f.selector == sig:getUserAccruedRewards(address, address).selector) {
-        getUserAccruedRewards@withrevert(user, reward);
-    } else if(f.selector == sig:getAssetDecimals(address).selector) {
-        getAssetDecimals@withrevert(asset);
-    } else if(f.selector == sig:getEmissionManager().selector) {
-        getEmissionManager@withrevert();
-    }
-
-    assert !lastReverted;
 }
 
 /* TODO: violated

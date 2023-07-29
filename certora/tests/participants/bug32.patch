@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..67e051c 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -91,7 +91,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+   function getRewardsByAsset(address asset) external view override returns (address[] memory) {
+     uint128 rewardsCount = _assets[asset].availableRewardsCount;
+     address[] memory availableRewards = new address[](rewardsCount);
+-
++    assert(false);
+     for (uint128 i = 0; i < rewardsCount; i++) {
+       availableRewards[i] = _assets[asset].availableRewards[i];
+     }

@@ -1,0 +1,12 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..8bd6638 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -538,6 +538,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+ 
+   /// @inheritdoc IRewardsDistributor
+   function getAssetDecimals(address asset) external view returns (uint8) {
++    assert(false);
+     return _assets[asset].decimals;
+   }
+ 
