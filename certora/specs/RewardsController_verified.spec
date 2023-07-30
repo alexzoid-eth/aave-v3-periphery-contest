@@ -31,8 +31,11 @@ methods {
 
     // RewardsControllerHarness
     function updateDataMultiple(address) external;
+    function updateData(address, address, uint256, uint256) external;
     function updateRewardData(address, address, uint256, uint256) external;
     function configureAssetsHarness(uint88, uint32, address, address, address, address) external;
+    function claimRewardsHarness(address[], uint256, address, address, address, address) external returns (uint256);
+    function claimAllRewardsHarness(address[], address, address, address) external returns (address[], uint256[]);
 
     // RewardsController envfree
     function getRewardOracle(address) external returns (address) envfree;
@@ -45,6 +48,7 @@ methods {
     function setTransferStrategy(address, address) external;
     function initialize(address) external;
     function setClaimer(address, address) external;
+    function handleAction(address, uint256, uint256) external;
 
     // RewardsDistributor envfree
     function getAssetDecimals(address) external returns (uint8) envfree;
@@ -57,12 +61,12 @@ methods {
 
     // RewardsDistributor
     function getAssetIndex(address, address) external returns (uint256, uint256); 
+    function getUserRewards(address[], address, address) external returns (uint256); 
 
     // AToken    
     function _.scaledBalanceOf(address) external => DISPATCHER(true);
     function _.getScaledUserBalanceAndSupply(address) external => DISPATCHER(true);
     function _.scaledTotalSupply() external => DISPATCHER(true);
-    function _.handleAction(address, uint256, uint256) external => DISPATCHER(true);
 
     // TransferStrategyBase
     function _.performTransfer(address, address, uint256) external => DISPATCHER(true);
@@ -297,7 +301,7 @@ hook Sload uint8 decimals _assets[KEY address asset].decimals STORAGE {
 ///////////////// Properties ///////////////////////
 
 // [bug 16] initializer() security modifier, second call of initialize() should revert
-rule initializeCalledOnce(env e1, env e2, address addr) {
+rule initializeCalledOnlyOnce(env e1, env e2, address addr) {
 
     initialize@withrevert(e1, addr);
     bool firstCallReverted = lastReverted;
@@ -319,7 +323,7 @@ rule initializeFirstCallShouldNotRevert(env e, address addr) {
 }
 
 // [bugs 18-25] getters integrity
-rule integrityGetters(address asset, address reward, address user) {
+rule gettersIntegrity(address asset, address reward, address user) {
     assert getClaimer(user) == ghostAuthorizedClaimers[user]; // bug18
     assert getRevisionHarness() == require_uint256(1); // bug19
     assert getRewardOracle(reward) == ghostRewardOracle[reward]; // bug20
@@ -369,7 +373,7 @@ rule gettersShouldNotRevert(env e, method f, address asset, address reward, addr
 }
 
 // [bugs 9, 38-50] configureAssets() integrity
-rule integrityConfigureAssets(
+rule configureAssetsIntegrity(
     env e, 
     uint88 emissionPerSecond, 
     uint32 distributionEnd,
@@ -428,7 +432,7 @@ rule integrityConfigureAssets(
 /*
 // TODO
 // [bug ] configureAssets() integrity of totalSupply
-rule integrityConfigureAssetsTotalSupply(
+rule configureAssetsTotalSupply(
     env e, 
     uint88 emissionPerSecond, 
     uint32 distributionEnd,
@@ -466,32 +470,29 @@ rule integrityConfigureAssetsTotalSupply(
 */
 
 // [bugs 8, 51-55] onlyEmissionManager() security modifier
-rule integrityOnlyEmissionManager(method f, env e, calldataarg args) 
+rule onlyEmissionManagerIntegrity(method f, env e, calldataarg args) 
     filtered { f -> ONLY_EMISSION_MANAGER_FUNCTIONS(f) } {
 
-    f(e, args);
+    f@withrevert(e, args);
 
-    assert e.msg.sender == getEmissionManager();
+    assert !lastReverted => e.msg.sender == getEmissionManager();
 }
 
 // [7, 56] onlyAuthorizedClaimers() security modifier
-rule integrityOnlyAuthorizedClaimers(method f, env e, address[] assets, uint256 amount, address user, address to, address reward) 
+rule onlyAuthorizedClaimersIntegrity(method f, env e, address[] assets, uint256 amount, address user, address to, address reward) 
     filtered { f -> ONLY_AUTHORIZED_CLAIMERS_FUNCTIONS(f) } {
     
-    setup(e);
-    setupUser(e, user);
-
     if(f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector) {
-        claimRewardsOnBehalf(e, assets, amount, user, to, reward);
+        claimRewardsOnBehalf@withrevert(e, assets, amount, user, to, reward);
     } else if(f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector) {
-        claimAllRewardsOnBehalf(e, assets, user, to);
+        claimAllRewardsOnBehalf@withrevert(e, assets, user, to);
     }
-
-    assert e.msg.sender == getClaimer(user);
+    
+    assert !lastReverted => e.msg.sender == getClaimer(user);
 }
 
 // [bugs 12-13, 52, 57] setTransferStrategy() integrity 
-rule integritySetTransferStrategy(env e, address reward, address transferStrategy) {
+rule setTransferStrategyIntegrity(env e, address reward, address transferStrategy) {
     
     setup(e);
 
@@ -505,7 +506,7 @@ rule integritySetTransferStrategy(env e, address reward, address transferStrateg
 }
 
 // [bugs 8, 10, 11] setRewardOracle() integrity, never reverted with EmissionManager
-rule integritySetRewardOracle(env e, address reward, address rewardOracle) {
+rule setRewardOracleIntegrity(env e, address reward, address rewardOracle) {
     
     setup(e);
 
@@ -517,7 +518,251 @@ rule integritySetRewardOracle(env e, address reward, address rewardOracle) {
     assert !reverted => rewardOracle == getRewardOracle(reward); // bug11
 }
 
-// [1] Possibility of update reward index when executing claim rewards
+// [bugs 14, 58] _isContract() integrity, never reverted
+rule isContractIntegrity() {
+
+    bool result = isContract@withrevert(currentContract);
+
+    assert !lastReverted; // bug58
+    assert result; // bug14
+}
+
+// [bugs 59-60] handleAction() integrity
+rule handleActionIntegrity(env e, address user, uint256 userBalance, uint256 totalSupply) {
+
+    require e.msg.sender == ATokenAddress;
+
+    storage initial = lastStorage;
+
+    updateData(e, ATokenAddress, user, userBalance, totalSupply) at initial;
+    storage afterUpdateData = lastStorage;
+
+    handleAction(e, user, totalSupply, userBalance) at initial;
+    storage afterHandleAction = lastStorage;
+
+    // Storage should be the same
+    assert afterUpdateData[currentContract] == afterHandleAction[currentContract];
+}
+
+// [bug 2] claimRewards() to zero address is not allowed 
+rule claimRewardsZeroAddressCheck(env e, address[] assets, uint256 amount, address to, address reward) {
+
+    setup(e);
+
+    claimRewards(e, assets, amount, to, reward);
+
+    assert to != 0; // bug2
+}
+
+// [bug 61-63] claimRewards() integrity
+rule claimRewardsIntegrity(env e, address[] assets, uint256 amount, address user, address to, address reward) {
+
+    setup(e);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    require user == e.msg.sender;
+    setupUser(e, to);
+    require reward == rewardTokenAddress;
+
+    storage initial = lastStorage;
+
+    uint256 claimed1 = claimRewardsHarness(e, assets, amount, e.msg.sender, user, to, reward) at initial;
+    uint256 toBalance1 = rewardTokenAddress.balanceOf(e, to);
+    storage storage1 = lastStorage;
+
+    uint256 claimed2 = claimRewards(e, assets, amount, to, reward) at initial;
+    uint256 toBalance2 = rewardTokenAddress.balanceOf(e, to);
+    storage storage2 = lastStorage;
+
+    assert storage1[currentContract] == storage2[currentContract]; // bug61
+    assert toBalance1 == toBalance2; // bug62
+    assert claimed1 == claimed2; // bug63
+}
+
+// [bug 4, 64] claimRewardsOnBehalf() from or to zero address is not allowed
+rule claimRewardsOnBehalfZeroAddressCheck(env e, address[] assets, uint256 amount, address user, address to, address reward) {
+
+    setup(e);
+
+    // Checked in integrityOnlyAuthorizedClaimers()
+    require e.msg.sender == getClaimer(user);
+
+    claimRewardsOnBehalf(e, assets, amount, user, to, reward);
+
+    assert user != 0 && to != 0; // bug4, bug64
+}
+
+// [bug 65-68] claimRewardsOnBehalf() integrity
+rule claimRewardsOnBehalfIntegrity(env e, address[] assets, uint256 amount, address user, address to, address reward) {
+
+    setup(e);
+
+    // Checked in integrityOnlyAuthorizedClaimers()
+    require e.msg.sender == getClaimer(user);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    setupUser(e, user);
+    setupUser(e, to);
+    require reward == rewardTokenAddress;
+
+    storage initial = lastStorage;
+
+    uint256 claimed1 = claimRewardsHarness(e, assets, amount, e.msg.sender, user, to, reward) at initial;
+    uint256 toBalance1 = rewardTokenAddress.balanceOf(e, to);
+    storage storage1 = lastStorage;
+
+    uint256 claimed2 = claimRewardsOnBehalf(e, assets, amount, user, to, reward) at initial;
+    uint256 toBalance2 = rewardTokenAddress.balanceOf(e, to);
+    storage storage2 = lastStorage;
+
+    assert storage1[currentContract] == storage2[currentContract];
+    assert toBalance1 == toBalance2;
+    assert claimed1 == claimed2;
+}
+
+// [bugs 69-72] claimRewardsToSelf() integrity
+rule claimRewardsToSelfIntegrity(env e, address[] assets, uint256 amount, address user, address to, address reward) {
+
+    setup(e);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    require reward == rewardTokenAddress;
+    require user == e.msg.sender;
+    require to == e.msg.sender;
+
+    storage initial = lastStorage;
+
+    uint256 claimed1 = claimRewardsHarness(e, assets, amount, e.msg.sender, user, to, reward) at initial;
+    uint256 toBalance1 = rewardTokenAddress.balanceOf(e, to);
+    storage storage1 = lastStorage;
+
+    uint256 claimed2 = claimRewardsToSelf(e, assets, amount, reward) at initial;
+    uint256 toBalance2 = rewardTokenAddress.balanceOf(e, to);
+    storage storage2 = lastStorage;
+
+    assert storage1[currentContract] == storage2[currentContract];
+    assert toBalance1 == toBalance2;
+    assert claimed1 == claimed2;
+}
+
+// [bug 5] claimAllRewards() to zero address should revert
+rule claimAllRewardsZeroAddressCheck(env e, address[] assets, address to) {
+
+    setup(e);
+
+    claimAllRewards(e, assets, to);
+
+    assert to != 0; // bug5
+}
+
+// TODO: run timeout
+// [bugs 73-75] claimAllRewards() integrity
+rule claimAllRewardsIntegrity(env e, address[] assets, address user, address to) {
+
+    setup(e);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    require user == e.msg.sender;
+    setupUser(e, to);
+
+    storage initial = lastStorage;
+
+    address[] rewardTokens1;
+    uint256[] claimed1;
+    rewardTokens1, claimed1 = claimAllRewardsHarness(e, assets, e.msg.sender, user, to) at initial;
+    storage storage1 = lastStorage;
+    uint256 toBalance1 = rewardTokenAddress.balanceOf(e, to);
+
+    address[] rewardTokens2;
+    uint256[] claimed2;
+    rewardTokens2, claimed2 = claimAllRewards(e, assets, to) at initial;
+    storage storage2 = lastStorage;
+    uint256 toBalance2 = rewardTokenAddress.balanceOf(e, to);
+
+    assert claimed1[0] == claimed2[0];
+    assert storage1[currentContract] == storage2[currentContract];
+    assert toBalance1 == toBalance2;
+}
+
+// [bug 6, 76] claimAllRewardsOnBehalf() from or to zero address should revert
+rule claimAllRewardsOnBehalfZeroAddressCheck(env e, address[] assets, address user, address to) {
+
+    setup(e);
+
+    // Checked in integrityOnlyAuthorizedClaimers()
+    require e.msg.sender == getClaimer(user);
+
+    claimAllRewardsOnBehalf(e, assets, user, to);
+
+    assert user != 0 && to != 0; // bug6, bug76
+}
+
+// [bugs 77-79] claimAllRewardsOnBehalf() integrity
+rule claimAllRewardsOnBehalfIntegrity(env e, address[] assets, address user, address to) {
+
+    setup(e);
+
+    // Checked in integrityOnlyAuthorizedClaimers()
+    require e.msg.sender == getClaimer(user);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    setupUser(e, user);
+    setupUser(e, to);
+
+    storage initial = lastStorage;
+
+    address[] rewardTokens1;
+    uint256[] claimed1;
+    rewardTokens1, claimed1 = claimAllRewardsHarness(e, assets, e.msg.sender, user, to) at initial;
+    storage storage1 = lastStorage;
+    uint256 toBalance1 = rewardTokenAddress.balanceOf(e, to);
+
+    address[] rewardTokens2;
+    uint256[] claimed2;
+    rewardTokens2, claimed2 = claimAllRewardsOnBehalf(e, assets, user, to) at initial;
+    storage storage2 = lastStorage;
+    uint256 toBalance2 = rewardTokenAddress.balanceOf(e, to);
+
+    assert storage1[currentContract] == storage2[currentContract];
+    assert toBalance1 == toBalance2;
+    assert claimed1[0] == claimed2[0];
+}
+
+// [bugs 80-81] claimAllRewardsToSelf() integrity
+rule claimAllRewardsToSelfIntegrity(env e, address[] assets, address user, address to) {
+
+    setup(e);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    require user == e.msg.sender;
+    require to == e.msg.sender;
+
+    storage initial = lastStorage;
+
+    address[] rewardTokens1;
+    uint256[] claimed1;
+    rewardTokens1, claimed1 = claimAllRewardsHarness(e, assets, e.msg.sender, user, to) at initial;
+    storage storage1 = lastStorage;
+    uint256 toBalance1 = rewardTokenAddress.balanceOf(e, to);
+
+    address[] rewardTokens2;
+    uint256[] claimed2;
+    rewardTokens2, claimed2 = claimAllRewardsToSelf(e, assets) at initial;
+    storage storage2 = lastStorage;
+    uint256 toBalance2 = rewardTokenAddress.balanceOf(e, to);
+
+    assert claimed1[0] == claimed2[0];
+    assert storage1[currentContract] == storage2[currentContract];
+    assert toBalance1 == toBalance2;
+}
+
+// [bug 1] Possibility of update reward index when executing claim rewards
 rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, address to, address reward) 
     filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
 
@@ -545,23 +790,11 @@ rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets,
 
     uint256 indexAfter = getAssetRewardIndex(assets[0], reward);
 
-    satisfy(indexBefore != indexAfter);
-}
-
-// [2] Claiming rewards to zero address should revert
-rule claimRewardsToZeroAddress(env e, address[] assets, uint256 amount, address to, address reward) {
-
-    setup(e);
-    setupUser(e, to);
-
-    claimRewards@withrevert(e, assets, amount, to, reward);
-
-    assert to == 0 => lastReverted;
+    satisfy(indexBefore != indexAfter); // bug1
 }
 
 // TODO: long working time
-// [3] Claim rewards should return amount of accrued rewards
-/*
+// [bug 3] Claim rewards should return amount of accrued rewards
 rule claimAllRewardsReturnClaimedAmounts(env e, address[] assets, address user, address to) {
 
     setup(e);
@@ -579,55 +812,11 @@ rule claimAllRewardsReturnClaimedAmounts(env e, address[] assets, address user, 
     uint256[] claimedAmounts;
     rewardsList, claimedAmounts = claimAllRewards(e, assets, to);
 
-    assert claimedAmounts[0] == rewards;
-}
-*/
-
-// [4] Claiming rewards on behalf from or to zero address should revert
-rule claimRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, uint256 amount, address user, address to, address reward) {
-
-    setup(e);
-    setupUser(e, user);
-    setupUser(e, to);
-
-    claimRewardsOnBehalf@withrevert(e, assets, amount, user, to, reward);
-
-    assert user == 0 || to == 0 => lastReverted;
+    assert claimedAmounts[0] == rewards; // bug3
 }
 
-// [5] Claiming all rewards to zero address should revert
-rule claimAllRewardsToZeroAddress(env e, address[] assets, address to) {
-
-    setup(e);
-    setupUser(e, to);
-
-    claimAllRewards@withrevert(e, assets, to);
-
-    assert to == 0 => lastReverted;
-}
-
-// [6] Claiming all rewards on behalf from or to zero address should revert
-rule claimAllRewardsOnBehalfFromOrToZeroAddress(env e, address[] assets, address user, address to) {
-
-    setup(e);
-    setupUser(e, user);
-
-    claimAllRewardsOnBehalf@withrevert(e, assets, user, to);
-
-    assert user == 0 || to == 0 => lastReverted;
-}
-
-// [14] _isContract() integrity, never reverted
-rule integrityIsContract() {
-
-    bool result = isContract@withrevert(currentContract);
-
-    assert !lastReverted;
-    assert result;
-}
-
-// [15] setClaimer() integrity, never reverted with EmissionManager
-rule integritySetClaimer(env e, address user, address caller) {
+// [bug 15] setClaimer() integrity, never reverted with EmissionManager
+rule setClaimerIntegrity(env e, address user, address caller) {
 
     setup(e);
 
@@ -636,15 +825,15 @@ rule integritySetClaimer(env e, address user, address caller) {
     setClaimer@withrevert(e, user, caller);
 
     assert !lastReverted;
-    assert getClaimer(user) == caller;
+    assert getClaimer(user) == caller; // bug15
 }
 
-// [] getRewardsList() integrity
-rule integrityGetRewardsList(env e) {
+// [bug 82] getRewardsList() integrity
+rule getRewardsListIntegrity(env e) {
 
     setup(e);
     address[] rewardsList = getRewardsList(); 
-    assert rewardsList[0] == ghostRewardsList[0];
+    assert rewardsList[0] == ghostRewardsList[0]; // bug82
 
     // TODO: quantifier doesn't work
     //fillMapFromRewardsList(rewardsList);
@@ -676,7 +865,6 @@ rule getAssetIndexShouldNotRevert(env e, address asset, address reward) {
 
     assert !lastReverted;
 }
-*/
 
 // [] getRewardsData() integrity
 rule getRewardsDataIntegrity(env e, address asset, address reward) {
@@ -697,3 +885,4 @@ rule getRewardsDataIntegrity(env e, address asset, address reward) {
     assert getAssetRewardLastUpdateTimestamp(asset, reward) == lastUpdateTimestamp;
     assert getAssetRewardDistributionEnd(asset, reward) == distributionEnd;
 }
+*/

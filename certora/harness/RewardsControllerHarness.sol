@@ -111,6 +111,10 @@ contract RewardsControllerHarness is RewardsController {
         _updateDataMultiple(user, _getUserAssetBalances(assets, user));
     }
 
+    function updateData(address asset, address user, uint256 userBalance, uint256 totalSupply) external {
+        _updateData(asset, user, userBalance, totalSupply);
+    }
+
     function updateRewardData(address asset, address reward, uint256 totalSupply, uint256 assetUnit) external returns (uint256, bool) {
         RewardsDataTypes.RewardData storage rewardConfig = _assets[asset].rewards[reward];
         return _updateRewardData(rewardConfig, totalSupply, assetUnit);
@@ -132,5 +136,25 @@ contract RewardsControllerHarness is RewardsController {
         config[0].transferStrategy = ITransferStrategyBase(transferStrategy);
         config[0].rewardOracle = IEACAggregatorProxy(rewardOracle);
         this.configureAssets(config);
+    }
+
+    function claimRewardsHarness(
+        address[] calldata assets, 
+        uint256 amount,
+        address claimer,
+        address user,
+        address to,
+        address reward
+    ) external returns (uint256) {
+        return _claimRewards(assets, amount, claimer, user, to, reward);
+    }
+
+    function claimAllRewardsHarness(
+        address[] calldata assets,
+        address claimer,
+        address user,
+        address to
+    ) external returns (address[] memory rewardsList, uint256[] memory claimedAmounts) {
+        return _claimAllRewards(assets, claimer, user, to);
     }
 }
