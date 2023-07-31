@@ -107,6 +107,11 @@ contract RewardsControllerHarness is RewardsController {
         return EMISSION_MANAGER;
     }
 
+    function getUserAssetBalance(address[] calldata assets, address user) external view returns (address, uint256, uint256) {
+        RewardsDataTypes.UserAssetBalance[] memory userAssetBalances = _getUserAssetBalances(assets, user);
+        return (userAssetBalances[0].asset, userAssetBalances[0].userBalance, userAssetBalances[0].totalSupply);
+    }
+
     function updateDataMultiple(address[] calldata assets, address user) external {
         _updateDataMultiple(user, _getUserAssetBalances(assets, user));
     }

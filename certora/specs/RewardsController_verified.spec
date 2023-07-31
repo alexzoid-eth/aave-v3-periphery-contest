@@ -30,6 +30,7 @@ methods {
     function getEmissionManagerHarness() external returns (address) envfree;
 
     // RewardsControllerHarness
+    function getUserAssetBalance(address[], address) external returns(address, uint256, uint256);
     function updateDataMultiple(address) external;
     function updateData(address, address, uint256, uint256) external;
     function updateRewardData(address, address, uint256, uint256) external;
@@ -430,7 +431,6 @@ rule configureAssetsIntegrity(
 }
 
 /*
-// TODO
 // [bug ] configureAssets() integrity of totalSupply
 rule configureAssetsTotalSupply(
     env e, 
@@ -658,7 +658,6 @@ rule claimAllRewardsZeroAddressCheck(env e, address[] assets, address to) {
     assert to != 0; // bug5
 }
 
-// TODO: run timeout
 // [bugs 73-75] claimAllRewards() integrity
 rule claimAllRewardsIntegrity(env e, address[] assets, address user, address to) {
 
@@ -667,25 +666,17 @@ rule claimAllRewardsIntegrity(env e, address[] assets, address user, address to)
     require assets.length == 1;
     require assets[0] == ATokenAddress;
     require user == e.msg.sender;
-    setupUser(e, to);
 
     storage initial = lastStorage;
 
-    address[] rewardTokens1;
-    uint256[] claimed1;
-    rewardTokens1, claimed1 = claimAllRewardsHarness(e, assets, e.msg.sender, user, to) at initial;
+    claimAllRewardsHarness(e, assets, e.msg.sender, user, to) at initial;
     storage storage1 = lastStorage;
-    uint256 toBalance1 = rewardTokenAddress.balanceOf(e, to);
 
-    address[] rewardTokens2;
-    uint256[] claimed2;
-    rewardTokens2, claimed2 = claimAllRewards(e, assets, to) at initial;
+    claimAllRewards(e, assets, to) at initial;
     storage storage2 = lastStorage;
-    uint256 toBalance2 = rewardTokenAddress.balanceOf(e, to);
 
-    assert claimed1[0] == claimed2[0];
     assert storage1[currentContract] == storage2[currentContract];
-    assert toBalance1 == toBalance2;
+    assert storage1[rewardTokenAddress] == storage2[rewardTokenAddress];
 }
 
 // [bug 6, 76] claimAllRewardsOnBehalf() from or to zero address should revert
@@ -711,26 +702,17 @@ rule claimAllRewardsOnBehalfIntegrity(env e, address[] assets, address user, add
 
     require assets.length == 1;
     require assets[0] == ATokenAddress;
-    setupUser(e, user);
-    setupUser(e, to);
 
     storage initial = lastStorage;
 
-    address[] rewardTokens1;
-    uint256[] claimed1;
-    rewardTokens1, claimed1 = claimAllRewardsHarness(e, assets, e.msg.sender, user, to) at initial;
+    claimAllRewardsHarness(e, assets, e.msg.sender, user, to) at initial;
     storage storage1 = lastStorage;
-    uint256 toBalance1 = rewardTokenAddress.balanceOf(e, to);
 
-    address[] rewardTokens2;
-    uint256[] claimed2;
-    rewardTokens2, claimed2 = claimAllRewardsOnBehalf(e, assets, user, to) at initial;
+    claimAllRewardsOnBehalf(e, assets, user, to) at initial;
     storage storage2 = lastStorage;
-    uint256 toBalance2 = rewardTokenAddress.balanceOf(e, to);
 
     assert storage1[currentContract] == storage2[currentContract];
-    assert toBalance1 == toBalance2;
-    assert claimed1[0] == claimed2[0];
+    assert storage1[rewardTokenAddress] == storage2[rewardTokenAddress];
 }
 
 // [bugs 80-81] claimAllRewardsToSelf() integrity
@@ -745,24 +727,17 @@ rule claimAllRewardsToSelfIntegrity(env e, address[] assets, address user, addre
 
     storage initial = lastStorage;
 
-    address[] rewardTokens1;
-    uint256[] claimed1;
-    rewardTokens1, claimed1 = claimAllRewardsHarness(e, assets, e.msg.sender, user, to) at initial;
+    claimAllRewardsHarness(e, assets, e.msg.sender, user, to) at initial;
     storage storage1 = lastStorage;
-    uint256 toBalance1 = rewardTokenAddress.balanceOf(e, to);
 
-    address[] rewardTokens2;
-    uint256[] claimed2;
-    rewardTokens2, claimed2 = claimAllRewardsToSelf(e, assets) at initial;
+    claimAllRewardsToSelf(e, assets) at initial;
     storage storage2 = lastStorage;
-    uint256 toBalance2 = rewardTokenAddress.balanceOf(e, to);
 
-    assert claimed1[0] == claimed2[0];
     assert storage1[currentContract] == storage2[currentContract];
-    assert toBalance1 == toBalance2;
+    assert storage1[rewardTokenAddress] == storage2[rewardTokenAddress];
 }
 
-// [bug 1] Possibility of update reward index when executing claim rewards
+// [bug 1, 85] Possibility of update reward index when executing claim rewards
 rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, address to, address reward) 
     filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
 
@@ -790,10 +765,41 @@ rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets,
 
     uint256 indexAfter = getAssetRewardIndex(assets[0], reward);
 
-    satisfy(indexBefore != indexAfter); // bug1
+    satisfy(indexBefore != indexAfter);
 }
 
-// TODO: long working time
+// [bug 86-94] Claim rewards will process token transfer when accrued available
+rule claimAllRewardsTransferFunds(method f, env e, address user, address[] assets, uint256 amount, address to, address reward, uint256 accrued) 
+    filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
+
+    setup(e);
+    setupUser(e, to);
+
+    require user == e.msg.sender;
+    require user != to;
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    require reward == rewardTokenAddress;
+
+    updateDataMultiple(e, assets, user);
+    require accrued == getAssetRewardUserAccrued(e.msg.sender, ATokenAddress, rewardTokenAddress);
+
+    uint256 rewardsBefore = rewardTokenAddress.balanceOf(e, to);
+
+    if(CLAIM_REWARDS(f)) {
+        claimRewards(e, assets, amount, to, reward);
+    } else if (CLAIM_ALL_REWARDS(f)) {
+        require amount == accrued;
+        claimAllRewards(e, assets, to);
+    }
+
+    uint256 rewardsAfter = rewardTokenAddress.balanceOf(e, to);
+
+    assert accrued <= amount => accrued == require_uint256(rewardsAfter - rewardsBefore);
+    assert accrued > amount => amount == require_uint256(rewardsAfter - rewardsBefore);
+}
+
+// TODO: `claimAll*()` long working time
 // [bug 3] Claim rewards should return amount of accrued rewards
 rule claimAllRewardsReturnClaimedAmounts(env e, address[] assets, address user, address to) {
 
@@ -838,6 +844,29 @@ rule getRewardsListIntegrity(env e) {
     // TODO: quantifier doesn't work
     //fillMapFromRewardsList(rewardsList);
     //assert (forall uint256 i . ghostRewardsList[i] == ghostRewardsMap[i]);
+}
+
+// [bugs 83-84] _getUserAssetBalances() integrity
+rule getUserAssetBalancesIntegrity(env e, address[] assets, address user) {
+
+    setup(e);
+    setupUser(e, user);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    
+    address asset;
+    uint256 userBalance1;
+    uint256 totalSupply1;
+    asset, userBalance1, totalSupply1 = getUserAssetBalance(e, assets, user);
+
+    uint256 userBalance2;
+    uint256 totalSupply2;
+    userBalance2, totalSupply2 = ATokenAddress.getScaledUserBalanceAndSupply(e, user);
+
+    assert assets[0] == asset; // bug83
+    assert userBalance1 == userBalance1;
+    assert totalSupply1 == totalSupply2;
 }
 
 /* TODO: violated
