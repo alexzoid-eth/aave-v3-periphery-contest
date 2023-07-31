@@ -1,13 +1,13 @@
 diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
-index cfa4d82..a1876ad 100644
+index cfa4d82..69816e8 100644
 --- a/contracts/rewards/RewardsController.sol
 +++ b/contracts/rewards/RewardsController.sol
-@@ -254,7 +254,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
-       return 0;
-     }
+@@ -315,7 +315,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+   ) internal {
+     ITransferStrategyBase transferStrategy = _transferStrategy[reward];
  
--    _transferRewards(to, reward, totalRewards);
-+    _transferRewards(to, user, totalRewards);
-     emit RewardsClaimed(user, reward, to, claimer, totalRewards);
+-    bool success = transferStrategy.performTransfer(to, reward, amount);
++    bool success = true;
  
-     return totalRewards;
+     require(success == true, 'TRANSFER_ERROR');
+   }
