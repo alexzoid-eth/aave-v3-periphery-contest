@@ -25,18 +25,19 @@ methods {
     function isRewardEnabled(address) external returns (bool) envfree;
     function getAssetAvailableReward(address, uint128) external returns (address) envfree;
     function getAssetAvailableRewardsCount(address) external returns (uint128) envfree;
-    function isContract(address) external returns (bool) envfree;
+    function isContractHarness(address) external returns (bool) envfree;
     function getRevisionHarness() external returns (uint256) envfree;
     function getEmissionManagerHarness() external returns (address) envfree;
 
     // RewardsControllerHarness
-    function getUserAssetBalance(address[], address) external returns(address, uint256, uint256);
-    function updateDataMultiple(address) external;
-    function updateData(address, address, uint256, uint256) external;
-    function updateRewardData(address, address, uint256, uint256) external;
+    function getUserAssetBalanceHarness(address[], address) external returns(address, uint256, uint256);
+    function updateDataMultipleHarness(address) external;
+    function updateDataHarness(address, address, uint256, uint256) external;
+    function updateRewardDataHarness(address, address, uint256, uint256) external;
     function configureAssetsHarness(uint88, uint32, address, address, address, address) external;
     function claimRewardsHarness(address[], uint256, address, address, address, address) external returns (uint256);
     function claimAllRewardsHarness(address[], address, address, address) external returns (address[], uint256[]);
+    function transferRewardsHarness(address, address, uint256) external;
 
     // RewardsController envfree
     function getRewardOracle(address) external returns (address) envfree;
@@ -121,6 +122,8 @@ definition GETTERS_NEVER_REVERTED(method f) returns bool =
     || f.selector == sig:getAssetDecimals(address).selector
     || f.selector == sig:getEmissionManager().selector;
 
+definition MAX_UINT256() returns uint256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+                                           
 ////////////////// FUNCTIONS //////////////////////
 
 // CVL functions for precondition assumptions 
@@ -198,11 +201,17 @@ ghost mapping(address => address) ghostTransferStrategy {
 }
 
 hook Sstore _transferStrategy[KEY address reward] address strategy STORAGE {
-    ghostTransferStrategy[reward] = strategy;
+    // One reward token supported
+    if(reward == rewardTokenAddress) {
+        ghostTransferStrategy[reward] = strategy;
+    } else {
+        ghostTransferStrategy[reward] = 0;
+    }
 }
 
 hook Sload address strategy _transferStrategy[KEY address reward] STORAGE {
-    require ghostTransferStrategy[reward] == strategy;
+    // One reward token supported
+    require reward == rewardTokenAddress => ghostTransferStrategy[reward] == strategy;
 }
 
 // Ghost copy of _rewardOracle[]
@@ -458,12 +467,12 @@ rule configureAssetsTotalSupply(
         rewardOracle
     );
 
-    // updateRewardData() with the same params should not change contract's state
+    // updateRewardDataHarness() with the same params should not change contract's state
     uint256 totalSupply = ATokenAddress.scaledTotalSupply(e);
     uint8 decimals;
     require decimals == ghostAssetsDecimals[asset];
     storage storageBefore = lastStorage;
-    updateRewardData(e, asset, reward, totalSupply, decimals);
+    updateRewardDataHarness(e, asset, reward, totalSupply, decimals);
     storage storageAfter = lastStorage;
     assert storageBefore == storageAfter;
 }
@@ -501,7 +510,7 @@ rule setTransferStrategyIntegrity(env e, address reward, address transferStrateg
 
     assert e.msg.sender != getEmissionManager() => reverted; // bug52
     assert transferStrategy == 0 => reverted; // bug13
-    assert isContract(transferStrategy) == false => reverted; // bug12
+    assert isContractHarness(transferStrategy) == false => reverted; // bug12
     assert !reverted => getTransferStrategy(reward) == transferStrategy; // bug57
 }
 
@@ -521,7 +530,7 @@ rule setRewardOracleIntegrity(env e, address reward, address rewardOracle) {
 // [bugs 14, 58] _isContract() integrity, never reverted
 rule isContractIntegrity() {
 
-    bool result = isContract@withrevert(currentContract);
+    bool result = isContractHarness@withrevert(currentContract);
 
     assert !lastReverted; // bug58
     assert result; // bug14
@@ -534,7 +543,7 @@ rule handleActionIntegrity(env e, address user, uint256 userBalance, uint256 tot
 
     storage initial = lastStorage;
 
-    updateData(e, ATokenAddress, user, userBalance, totalSupply) at initial;
+    updateDataHarness(e, ATokenAddress, user, userBalance, totalSupply) at initial;
     storage afterUpdateData = lastStorage;
 
     handleAction(e, user, totalSupply, userBalance) at initial;
@@ -554,7 +563,7 @@ rule claimRewardsZeroAddressCheck(env e, address[] assets, uint256 amount, addre
     assert to != 0; // bug2
 }
 
-// [bug 61-63] claimRewards() integrity
+// [bug 61-63, 95] claimRewards() integrity
 rule claimRewardsIntegrity(env e, address[] assets, uint256 amount, address user, address to, address reward) {
 
     setup(e);
@@ -575,6 +584,7 @@ rule claimRewardsIntegrity(env e, address[] assets, uint256 amount, address user
     uint256 toBalance2 = rewardTokenAddress.balanceOf(e, to);
     storage storage2 = lastStorage;
 
+    assert amount == 0 => claimed2 == 0;
     assert storage1[currentContract] == storage2[currentContract]; // bug61
     assert toBalance1 == toBalance2; // bug62
     assert claimed1 == claimed2; // bug63
@@ -738,7 +748,7 @@ rule claimAllRewardsToSelfIntegrity(env e, address[] assets, address user, addre
 }
 
 // [bug 1, 85] Possibility of update reward index when executing claim rewards
-rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, address to, address reward) 
+rule claimRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, address to, address reward) 
     filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
 
     setup(e);
@@ -768,8 +778,8 @@ rule claimAllRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets,
     satisfy(indexBefore != indexAfter);
 }
 
-// [bug 86-94] Claim rewards will process token transfer when accrued available
-rule claimAllRewardsTransferFunds(method f, env e, address user, address[] assets, uint256 amount, address to, address reward, uint256 accrued) 
+// [bug 86-94, 102] Claim rewards will process token transfer when accrued available
+rule claimRewardsTransferFunds(method f, env e, address user, address[] assets, uint256 amount, address to, address reward) 
     filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
 
     setup(e);
@@ -781,22 +791,67 @@ rule claimAllRewardsTransferFunds(method f, env e, address user, address[] asset
     require assets[0] == ATokenAddress;
     require reward == rewardTokenAddress;
 
-    updateDataMultiple(e, assets, user);
-    require accrued == getAssetRewardUserAccrued(e.msg.sender, ATokenAddress, rewardTokenAddress);
+    // Will update accrued
+    updateDataMultipleHarness(e, assets, user);
 
+    uint256 accruedBefore = getAssetRewardUserAccrued(e.msg.sender, ATokenAddress, rewardTokenAddress);
     uint256 rewardsBefore = rewardTokenAddress.balanceOf(e, to);
 
     if(CLAIM_REWARDS(f)) {
         claimRewards(e, assets, amount, to, reward);
     } else if (CLAIM_ALL_REWARDS(f)) {
-        require amount == accrued;
+        require accruedBefore == amount;
         claimAllRewards(e, assets, to);
     }
 
+    uint256 accruedAfter = getAssetRewardUserAccrued(e.msg.sender, ATokenAddress, rewardTokenAddress);
     uint256 rewardsAfter = rewardTokenAddress.balanceOf(e, to);
 
-    assert accrued <= amount => accrued == require_uint256(rewardsAfter - rewardsBefore);
-    assert accrued > amount => amount == require_uint256(rewardsAfter - rewardsBefore);
+    // No way to send zero rewards
+    assert require_uint256(rewardsAfter - rewardsBefore) != 0;
+
+    // Transfer all rewards
+    assert accruedBefore <= amount =>
+        accruedBefore == require_uint256(rewardsAfter - rewardsBefore) 
+        && accruedAfter == 0;
+
+    // Some rewards left
+    assert accruedBefore > amount => 
+        amount == require_uint256(rewardsAfter - rewardsBefore) 
+        && accruedAfter == require_uint256(accruedBefore - amount);
+}
+
+// [bugs 97-101] _transferRewards() integrity
+rule transferRewardsIntegrity(env e, address to, address reward, uint256 amount) {
+
+    setup(e);
+    setupUser(e, to);
+
+    require reward == rewardTokenAddress;
+
+    // No way go inside a _transferRewards() with zero amount 
+    require amount != 0;
+
+    uint256 balanceToBefore = rewardTokenAddress.balanceOf(e, to);
+    uint256 balanceStrategyBefore = rewardTokenAddress.balanceOf(e, transferStrategyAddress);
+
+    transferRewardsHarness@withrevert(e, to, reward, amount);
+    bool reverted = lastReverted;
+
+    uint256 balanceToAfter = rewardTokenAddress.balanceOf(e, to);
+    uint256 balanceStrategyAfter = rewardTokenAddress.balanceOf(e, transferStrategyAddress);
+
+    bool enoughToTransfer = balanceStrategyBefore >= amount;
+    bool couldReceive = require_uint256(MAX_UINT256() - balanceToBefore) >= amount;
+    bool shouldRevert = !enoughToTransfer || !couldReceive;
+
+    assert shouldRevert == reverted;
+
+    // Sender balance
+    assert !shouldRevert => require_uint256(balanceStrategyBefore - balanceStrategyAfter) == amount;
+
+    // Recipient balance
+    assert !shouldRevert => require_uint256(balanceToAfter - balanceToBefore) == amount;
 }
 
 // TODO: `claimAll*()` long working time
@@ -810,7 +865,7 @@ rule claimAllRewardsReturnClaimedAmounts(env e, address[] assets, address user, 
     require assets[0] == ATokenAddress;
     require user == e.msg.sender;
 
-    updateDataMultiple(e, assets, user);
+    updateDataMultipleHarness(e, assets, user);
 
     uint256 rewards = getUserAccruedRewards(user, rewardTokenAddress);
 
@@ -858,7 +913,7 @@ rule getUserAssetBalancesIntegrity(env e, address[] assets, address user) {
     address asset;
     uint256 userBalance1;
     uint256 totalSupply1;
-    asset, userBalance1, totalSupply1 = getUserAssetBalance(e, assets, user);
+    asset, userBalance1, totalSupply1 = getUserAssetBalanceHarness(e, assets, user);
 
     uint256 userBalance2;
     uint256 totalSupply2;

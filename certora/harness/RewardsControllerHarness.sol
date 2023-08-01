@@ -95,7 +95,7 @@ contract RewardsControllerHarness is RewardsController {
         return _isRewardEnabled[reward];
     }
 
-    function isContract(address contractAddress) external view returns (bool) {
+    function isContractHarness(address contractAddress) external view returns (bool) {
         return _isContract(contractAddress);
     }
 
@@ -107,20 +107,20 @@ contract RewardsControllerHarness is RewardsController {
         return EMISSION_MANAGER;
     }
 
-    function getUserAssetBalance(address[] calldata assets, address user) external view returns (address, uint256, uint256) {
+    function getUserAssetBalanceHarness(address[] calldata assets, address user) external view returns (address, uint256, uint256) {
         RewardsDataTypes.UserAssetBalance[] memory userAssetBalances = _getUserAssetBalances(assets, user);
         return (userAssetBalances[0].asset, userAssetBalances[0].userBalance, userAssetBalances[0].totalSupply);
     }
 
-    function updateDataMultiple(address[] calldata assets, address user) external {
+    function updateDataMultipleHarness(address[] calldata assets, address user) external {
         _updateDataMultiple(user, _getUserAssetBalances(assets, user));
     }
 
-    function updateData(address asset, address user, uint256 userBalance, uint256 totalSupply) external {
+    function updateDataHarness(address asset, address user, uint256 userBalance, uint256 totalSupply) external {
         _updateData(asset, user, userBalance, totalSupply);
     }
 
-    function updateRewardData(address asset, address reward, uint256 totalSupply, uint256 assetUnit) external returns (uint256, bool) {
+    function updateRewardDataHarness(address asset, address reward, uint256 totalSupply, uint256 assetUnit) external returns (uint256, bool) {
         RewardsDataTypes.RewardData storage rewardConfig = _assets[asset].rewards[reward];
         return _updateRewardData(rewardConfig, totalSupply, assetUnit);
     }
@@ -161,5 +161,9 @@ contract RewardsControllerHarness is RewardsController {
         address to
     ) external returns (address[] memory rewardsList, uint256[] memory claimedAmounts) {
         return _claimAllRewards(assets, claimer, user, to);
+    }
+
+    function transferRewardsHarness(address to, address reward, uint256 amount) external {
+        _transferRewards(to, reward, amount);
     }
 }
