@@ -363,7 +363,7 @@ rule gettersShouldNotRevert(env e, method f, address asset, address reward, addr
     assert !lastReverted;
 }
 
-// [bugs 9, 38-50] configureAssets() integrity
+// [bugs 9, 38-50, 128-136] configureAssets() integrity
 rule configureAssetsIntegrity(
     env e, 
     uint88 emissionPerSecond, 
@@ -394,6 +394,10 @@ rule configureAssetsIntegrity(
     require getAssetsListLength() < 1000;
     require getRewardsListLength() < 1000;
 
+    uint256 oldIndex;
+    uint256 newIndex;
+    oldIndex, newIndex = getAssetIndexHarness(e, asset, reward);
+
     uint128 availableRewardsCountBefore = getAssetAvailableRewardsCount(asset);
 
     configureAssetsHarness(
@@ -407,6 +411,7 @@ rule configureAssetsIntegrity(
     );
 
     uint128 availableRewardsCountAfter = getAssetAvailableRewardsCount(asset);
+    uint256 currentIndex = getAssetRewardIndex(asset, reward);
 
     assert require_uint256(emissionPerSecond) == getAssetRewardEmissionPerSecond(asset, reward); // bug45
     assert require_uint256(distributionEnd) == getAssetRewardDistributionEnd(asset, reward); // bug46
@@ -418,46 +423,12 @@ rule configureAssetsIntegrity(
     assert zeroTimeStamp => availableRewardsCountAfter == require_uint128(availableRewardsCountBefore + require_uint128(1)); // bug47
     assert zeroTimeStamp => getAssetAvailableReward(asset, availableRewardsCountBefore) == reward; // bug48
     assert !zeroTimeStamp => availableRewardsCountAfter == availableRewardsCountBefore; // bug49
+
+    // set in _updateRewardData()
+    assert require_uint32(getAssetRewardLastUpdateTimestamp(asset, reward)) == require_uint32(e.block.timestamp); // bug128
+    assert oldIndex == newIndex => currentIndex == oldIndex; // bug128-136
+    assert oldIndex != newIndex => currentIndex == newIndex;
 }
-
-/*
-// [bug ] configureAssets() integrity of totalSupply
-rule configureAssetsTotalSupply(
-    env e, 
-    uint88 emissionPerSecond, 
-    uint32 distributionEnd,
-    address asset,
-    address reward,
-    address transferStrategy,
-    address rewardOracle
-    ) {
-
-    setup(e);
-
-    require e.msg.sender == getEmissionManager();
-    require asset == ATokenAddress;
-    require reward == rewardTokenAddress;
-
-    configureAssetsHarness(
-        e, 
-        emissionPerSecond, 
-        distributionEnd,
-        asset,
-        reward,
-        transferStrategy,
-        rewardOracle
-    );
-
-    // updateRewardDataHarness() with the same params should not change contract's state
-    uint256 totalSupply = ATokenAddress.scaledTotalSupply(e);
-    uint8 decimals;
-    require decimals == ghostAssetsDecimals[asset];
-    storage storageBefore = lastStorage;
-    updateRewardDataHarness(e, asset, reward, totalSupply, decimals);
-    storage storageAfter = lastStorage;
-    assert storageBefore == storageAfter;
-}
-*/
 
 // [bugs 8, 51-55] onlyEmissionManager() security modifier
 rule onlyEmissionManagerIntegrity(method f, env e, calldataarg args) 
