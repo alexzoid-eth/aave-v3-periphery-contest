@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..15eb9bc 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -521,7 +521,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     assembly {
+       firstTerm := div(firstTerm, totalSupply)
+     }
+-    return (oldIndex, (firstTerm + oldIndex));
++    return (oldIndex, (firstTerm - oldIndex));
+   }
+ 
+   /**

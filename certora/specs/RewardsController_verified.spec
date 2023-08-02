@@ -942,6 +942,43 @@ rule getAssetIndexIntegrity(env e, address asset, address reward) {
     assert newIndex1 == newIndex2;
 }
 
+// [bugs 119-127] _getAssetIndex() integrity
+rule _getAssetIndexIntegrity(env e, address asset, address reward) {
+    
+    require asset == ATokenAddress;
+
+    uint8 decimals = getAssetDecimals(asset);
+    require decimals > 0 && decimals < 77;
+
+    uint256 index = getAssetRewardIndex(asset, reward); 
+    uint256 totalSupply = ATokenAddress.scaledTotalSupply(e);
+    uint256 emissionPerSecond = getAssetRewardEmissionPerSecond(asset, reward);
+    uint256 lastUpdateTimestamp = getAssetRewardLastUpdateTimestamp(asset, reward);
+    uint256 distributionEnd = getAssetRewardDistributionEnd(asset, reward);
+
+    // TODO: make as invariant
+    require e.block.timestamp >= lastUpdateTimestamp;
+
+    uint256 indexOld;
+    uint256 indexNew;
+    indexOld, indexNew = getAssetIndexHarness@withrevert(e, asset, reward);
+
+    bool reverted = lastReverted;
+    bool returnNoChanged = !reverted && indexOld == indexNew;
+
+    // return (indexOld, indexOld)
+    assert emissionPerSecond == 0 => returnNoChanged; // bug119
+    assert totalSupply == 0 => returnNoChanged; // bug120
+    assert lastUpdateTimestamp == e.block.timestamp => returnNoChanged; // bug121
+    assert lastUpdateTimestamp >= distributionEnd => returnNoChanged; // bug122
+
+    assert !reverted => indexOld == index; // bug123
+
+    // return (indexOld, indexNew)
+    assert emissionPerSecond != 0 && totalSupply != 0 && lastUpdateTimestamp != e.block.timestamp && lastUpdateTimestamp < distributionEnd
+        => indexNew == require_uint256(indexOld + require_uint256((require_uint256(emissionPerSecond * require_uint256((e.block.timestamp > distributionEnd ? distributionEnd : e.block.timestamp) - lastUpdateTimestamp) * require_uint256(10 ^ decimals))) / totalSupply)); // bug124-127
+}
+
 // [bug 82] getRewardsList() integrity
 rule getRewardsListIntegrity(env e, uint256 i) {
     
@@ -1001,4 +1038,29 @@ rule getUserRewardsIntegrity(env e, address[] assets, address user, address rewa
     uint256 rewards2 = getUserRewardsHarness(e, assets, user, reward);
 
     assert rewards1 == rewards2;
+}
+
+// [bug 116-118] _updateDataMultiple() integrity
+rule updateDataMultipleIntegrity(env e, address[] assets, address user) {
+
+    setup(e);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+
+    address asset; 
+    uint256 userBalance; 
+    uint256 totalSupply;
+    asset, userBalance, totalSupply = getUserAssetBalanceHarness(e, assets, user);
+
+    storage initial = lastStorage;
+
+    updateDataMultipleHarness(e, assets, user) at initial;
+    storage storage1 = lastStorage;
+
+    updateDataHarness(e, assets[0], user, userBalance, totalSupply) at initial;
+    storage storage2 = lastStorage;
+
+    // _updateDataMultiple() storage changes for `ATokenAddress` asset should be equal to _updateData(`ATokenAddress`)
+    assert storage1[currentContract] == storage2[currentContract];
 }

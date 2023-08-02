@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..5d7d6a9 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -505,7 +505,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     uint256 lastUpdateTimestamp = rewardData.lastUpdateTimestamp;
+ 
+     if (
+-      emissionPerSecond == 0 ||
++      emissionPerSecond != 0 ||
+       totalSupply == 0 ||
+       lastUpdateTimestamp == block.timestamp ||
+       lastUpdateTimestamp >= distributionEnd
