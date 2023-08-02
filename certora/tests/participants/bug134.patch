@@ -1,0 +1,15 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..b26b72e 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -236,9 +236,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+         _assetsList.push(rewardsInput[i].asset);
+       }
+ 
+-      uint256 decimals = _assets[rewardsInput[i].asset].decimals = IERC20Detailed(
+-        rewardsInput[i].asset
+-      ).decimals();
++      uint256 decimals = _assets[rewardsInput[i].asset].decimals = 18;
+ 
+       RewardsDataTypes.RewardData storage rewardConfig = _assets[rewardsInput[i].asset].rewards[
+         rewardsInput[i].reward

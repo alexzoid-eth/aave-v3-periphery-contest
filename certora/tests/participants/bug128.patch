@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..19f8947 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -304,7 +304,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+ 
+       //optimization: storing one after another saves one SSTORE
+       rewardData.index = uint104(newIndex);
+-      rewardData.lastUpdateTimestamp = block.timestamp.toUint32();
++      //rewardData.lastUpdateTimestamp = block.timestamp.toUint32();
+     } else {
+       rewardData.lastUpdateTimestamp = block.timestamp.toUint32();
+     }

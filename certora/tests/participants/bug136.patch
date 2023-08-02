@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..794f44f 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -261,7 +261,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       // Due emissions is still zero, updates only latestUpdateTimestamp
+       (uint256 newIndex, ) = _updateRewardData(
+         rewardConfig,
+-        rewardsInput[i].totalSupply,
++        0,
+         10**decimals
+       );
+ 
