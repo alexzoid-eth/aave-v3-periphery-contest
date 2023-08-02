@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..c3065d0 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -121,7 +121,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+   {
+     uint256 totalAccrued;
+     for (uint256 i = 0; i < _assetsList.length; i++) {
+-      totalAccrued += _assets[_assetsList[i]].rewards[reward].usersData[user].accrued;
++      totalAccrued += _assets[_assetsList[i]].rewards[reward].usersData[user].index;
+     }
+ 
+     return totalAccrued;

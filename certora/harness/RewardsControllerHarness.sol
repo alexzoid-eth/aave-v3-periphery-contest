@@ -9,8 +9,6 @@ import {IScaledBalanceToken} from '@aave/core-v3/contracts/interfaces/IScaledBal
 
 contract RewardsControllerHarness is RewardsController {
 
-    mapping(uint256 => address) public _rewardsMap;
-
     constructor(address emissionManager) RewardsController(emissionManager) {}
 
     function getAssetRewardIndex(address asset, address reward) external view returns (uint256) {
@@ -43,14 +41,6 @@ contract RewardsControllerHarness is RewardsController {
 
     function getRewardsListLength() external view returns (uint256) {
         return _rewardsList.length;
-    }
-
-    function fillMapFromRewardsList(address[] memory rewardsList_) external {
-        uint256 key = 0; 
-        for (uint256 i = 0; i < rewardsList_.length; i++) {
-            _rewardsMap[key] = rewardsList_[i];
-            key++;
-        }
     }
 
     function isRewardInList(address reward) external view returns (bool) {
@@ -110,6 +100,20 @@ contract RewardsControllerHarness is RewardsController {
     function getUserAssetBalanceHarness(address[] calldata assets, address user) external view returns (address, uint256, uint256) {
         RewardsDataTypes.UserAssetBalance[] memory userAssetBalances = _getUserAssetBalances(assets, user);
         return (userAssetBalances[0].asset, userAssetBalances[0].userBalance, userAssetBalances[0].totalSupply);
+    }
+
+    function getAssetIndexHarness(address asset, address reward) external view returns (uint256, uint256) {
+        RewardsDataTypes.RewardData storage rewardData = _assets[asset].rewards[reward];
+        return
+        _getAssetIndex(
+            rewardData,
+            IScaledBalanceToken(asset).scaledTotalSupply(),
+            10**_assets[asset].decimals
+        );
+    }
+ 
+    function getUserRewardsHarness(address[] calldata assets, address user, address reward) external view returns (uint256) {
+        return _getUserReward(user, reward, _getUserAssetBalances(assets, user));
     }
 
     function updateDataMultipleHarness(address[] calldata assets, address user) external {

@@ -7,7 +7,7 @@ using TransferStrategyHarness as transferStrategyAddress;
 /////////////////// Methods ////////////////////////
 
 methods {
-    // RewardsControllerHarness envfree
+    // Harness envfree
     function getAssetRewardIndex(address, address) external returns (uint256) envfree;
     function getAssetRewardEmissionPerSecond(address, address) external returns (uint256) envfree;
     function getAssetRewardLastUpdateTimestamp(address, address) external returns (uint256) envfree;
@@ -16,8 +16,6 @@ methods {
     function getAssetRewardUserAccrued(address, address, address) external returns (uint256) envfree;
     function getRewardToken(uint256) external returns (address) envfree;
     function getRewardsListLength() external returns (uint256) envfree;
-    function fillMapFromRewardsList(address[]) external envfree;
-    function _rewardsMap(uint256) external returns (address) envfree;
     function isRewardInList(address) external returns (bool) envfree;
     function getAssetToken(uint256) external returns (address) envfree;
     function getAssetsListLength() external returns (uint256) envfree;
@@ -29,7 +27,7 @@ methods {
     function getRevisionHarness() external returns (uint256) envfree;
     function getEmissionManagerHarness() external returns (address) envfree;
 
-    // RewardsControllerHarness
+    // Harness
     function getUserAssetBalanceHarness(address[], address) external returns(address, uint256, uint256);
     function updateDataMultipleHarness(address) external;
     function updateDataHarness(address, address, uint256, uint256) external;
@@ -38,6 +36,8 @@ methods {
     function claimRewardsHarness(address[], uint256, address, address, address, address) external returns (uint256);
     function claimAllRewardsHarness(address[], address, address, address) external returns (address[], uint256[]);
     function transferRewardsHarness(address, address, uint256) external;
+    function getAssetIndexHarness(address, address) external returns (uint256, uint256);
+    function getUserRewardsHarness(address[], address, address) external returns (uint256);
 
     // RewardsController envfree
     function getRewardOracle(address) external returns (address) envfree;
@@ -60,6 +60,7 @@ methods {
     function getDistributionEnd(address, address) external returns (uint256) envfree; 
     function getRewardsList() external returns (address[]) envfree; 
     function getRewardsByAsset(address) external returns (address[]) envfree; 
+    function setDistributionEnd(address, address, uint32) external envfree;
 
     // RewardsDistributor
     function getAssetIndex(address, address) external returns (uint256, uint256); 
@@ -201,17 +202,11 @@ ghost mapping(address => address) ghostTransferStrategy {
 }
 
 hook Sstore _transferStrategy[KEY address reward] address strategy STORAGE {
-    // One reward token supported
-    if(reward == rewardTokenAddress) {
-        ghostTransferStrategy[reward] = strategy;
-    } else {
-        ghostTransferStrategy[reward] = 0;
-    }
+    ghostTransferStrategy[reward] = strategy;
 }
 
 hook Sload address strategy _transferStrategy[KEY address reward] STORAGE {
-    // One reward token supported
-    require reward == rewardTokenAddress => ghostTransferStrategy[reward] == strategy;
+    require ghostTransferStrategy[reward] == strategy;
 }
 
 // Ghost copy of _rewardOracle[]
@@ -254,20 +249,6 @@ hook Sstore _rewardsList[INDEX uint256 i] address reward STORAGE {
 
 hook Sload address reward _rewardsList[INDEX uint256 i] STORAGE {
     require ghostRewardsList[i] == reward;
-}
-
-// Ghost copy of _rewardsMap[]
-
-ghost mapping(uint256 => address) ghostRewardsMap {
-    init_state axiom forall uint256 x. ghostRewardsMap[x] == 0;
-}
-
-hook Sstore _rewardsMap[KEY uint256 i] address reward STORAGE {
-    ghostRewardsMap[i] = reward;
-}
-
-hook Sload address reward _rewardsMap[KEY uint256 i] STORAGE {
-    require ghostRewardsMap[i] == reward;
 }
 
 // Ghost copy of _assetsList[]
@@ -778,7 +759,7 @@ rule claimRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, ad
     satisfy(indexBefore != indexAfter);
 }
 
-// [bug 86-94, 102] Claim rewards will process token transfer when accrued available
+// [bug 86-94] Claim rewards will process token transfer when accrued available
 rule claimRewardsTransferFunds(method f, env e, address user, address[] assets, uint256 amount, address to, address reward) 
     filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
 
@@ -807,9 +788,6 @@ rule claimRewardsTransferFunds(method f, env e, address user, address[] assets, 
     uint256 accruedAfter = getAssetRewardUserAccrued(e.msg.sender, ATokenAddress, rewardTokenAddress);
     uint256 rewardsAfter = rewardTokenAddress.balanceOf(e, to);
 
-    // No way to send zero rewards
-    assert require_uint256(rewardsAfter - rewardsBefore) != 0;
-
     // Transfer all rewards
     assert accruedBefore <= amount =>
         accruedBefore == require_uint256(rewardsAfter - rewardsBefore) 
@@ -819,6 +797,16 @@ rule claimRewardsTransferFunds(method f, env e, address user, address[] assets, 
     assert accruedBefore > amount => 
         amount == require_uint256(rewardsAfter - rewardsBefore) 
         && accruedAfter == require_uint256(accruedBefore - amount);
+}
+
+// [bug 102] Claim zero rewards will return zero
+rule claimRewardsZeroAmountReturnZero(env e, address[] assets, uint256 amount, address to, address reward) {
+
+    setup(e);
+
+    uint256 claimed = claimRewards(e, assets, amount, to, reward);
+
+    assert amount == 0 => claimed == 0;
 }
 
 // [bugs 97-101] _transferRewards() integrity
@@ -889,18 +877,6 @@ rule setClaimerIntegrity(env e, address user, address caller) {
     assert getClaimer(user) == caller; // bug15
 }
 
-// [bug 82] getRewardsList() integrity
-rule getRewardsListIntegrity(env e) {
-
-    setup(e);
-    address[] rewardsList = getRewardsList(); 
-    assert rewardsList[0] == ghostRewardsList[0]; // bug82
-
-    // TODO: quantifier doesn't work
-    //fillMapFromRewardsList(rewardsList);
-    //assert (forall uint256 i . ghostRewardsList[i] == ghostRewardsMap[i]);
-}
-
 // [bugs 83-84] _getUserAssetBalances() integrity
 rule getUserAssetBalancesIntegrity(env e, address[] assets, address user) {
 
@@ -924,33 +900,7 @@ rule getUserAssetBalancesIntegrity(env e, address[] assets, address user) {
     assert totalSupply1 == totalSupply2;
 }
 
-/* TODO: violated
-distributionEnd:     0xffffffff
-emissionPerSecond:   0xffffffffffffffffffffff
-lastUpdateTimestamp: 0xfffffffe
-e.block.timestamp    0x100000000
-
-currentTimestamp = 0xffffffff
-timeDelta = 0xffffffff - 0xfffffffe = 1
-firstTerm = 0xffffffffffffffffffffff * 1 * 10
-totalSupply = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-*/
-// [] getAssetIndex() should not revert
-/*
-rule getAssetIndexShouldNotRevert(env e, address asset, address reward) {
-
-    setup(e);
-
-    require asset == ATokenAddress;
-    require reward == rewardTokenAddress;
-    require e.block.timestamp >= getAssetRewardLastUpdateTimestamp(asset, reward);
-
-    getAssetIndex@withrevert(e, asset, reward);
-
-    assert !lastReverted;
-}
-
-// [] getRewardsData() integrity
+// [bugs 103-106] getRewardsData() integrity
 rule getRewardsDataIntegrity(env e, address asset, address reward) {
 
     setup(e);
@@ -969,4 +919,86 @@ rule getRewardsDataIntegrity(env e, address asset, address reward) {
     assert getAssetRewardLastUpdateTimestamp(asset, reward) == lastUpdateTimestamp;
     assert getAssetRewardDistributionEnd(asset, reward) == distributionEnd;
 }
-*/
+
+// [bugs 107-109] getAssetIndex() integrity
+rule getAssetIndexIntegrity(env e, address asset, address reward) {
+    
+    setup(e);
+    
+    require asset == ATokenAddress;
+    require reward == rewardTokenAddress;
+
+    storage initial = lastStorage;
+
+    uint256 oldIndex1;
+    uint256 newIndex1;
+    oldIndex1, newIndex1 = getAssetIndexHarness(e, asset, reward) at initial;
+
+    uint256 oldIndex2;
+    uint256 newIndex2;
+    oldIndex2, newIndex2 = getAssetIndex(e, asset, reward) at initial;
+
+    assert oldIndex1 == oldIndex2;
+    assert newIndex1 == newIndex2;
+}
+
+// [bug 82] getRewardsList() integrity
+rule getRewardsListIntegrity(env e, uint256 i) {
+    
+    setup(e);
+
+    address[] rewardsList = getRewardsList(); 
+    assert rewardsList[0] == ghostRewardsList[0]; // bug82
+}
+
+// [bug 110] getRewardsByAsset() integrity
+rule getRewardsByAssetIntegrity(env e, address asset) {
+
+    setup(e);
+
+    require asset == ATokenAddress;
+
+    address reward = getAssetAvailableReward(asset, 0);
+
+    address[] rewards = getRewardsByAsset(asset);
+
+    assert reward == rewards[0];
+}
+
+// [bug 111] getUserAccruedRewards() integrity
+rule getUserAccruedRewardsIntegrity(env e, address user, address asset, address reward) {
+    
+    setup(e);
+
+    require asset == ATokenAddress;
+
+    uint256 totalAccrued = getUserAccruedRewards(user, reward);
+    uint256 accrued = getAssetRewardUserAccrued(user, asset, reward);
+
+    assert totalAccrued == accrued;
+}
+
+// [bug 112] setDistributionEnd() integrity
+rule setDistributionEndIntegrity(address asset, address reward, address user, uint32 newDistributionEnd) {
+
+    setDistributionEnd(asset, reward, newDistributionEnd);
+
+    assert require_uint256(newDistributionEnd) == getAssetRewardDistributionEnd(asset, reward);   
+} 
+
+// [bug 113-115] getUserRewards() integrity`
+rule getUserRewardsIntegrity(env e, address[] assets, address user, address reward) {
+
+    setup(e);
+    setupUser(e, user);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    require reward == rewardTokenAddress;
+
+    uint256 rewards1 = getUserRewards(e, assets, user, reward);
+
+    uint256 rewards2 = getUserRewardsHarness(e, assets, user, reward);
+
+    assert rewards1 == rewards2;
+}
