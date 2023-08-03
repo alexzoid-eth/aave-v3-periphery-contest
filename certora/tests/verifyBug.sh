@@ -12,15 +12,15 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
-MSG="[run] $@"
 DIR_PATH="$1" # Capture the directory path from the first parameter
 shift 1 # shift arguments to exclude the first one
+MSG="[run] $@"
 
 # Check if the next argument is a bug number
 if [[ $1 =~ ^[0-9]+$ ]]
 then
   FILE_NAME="bug$1"
-  shift 1  # shift arguments to exclude the first one (which is now the bug number)
+  shift 1 
   MSG="[prove $FILE_NAME] $@"
 fi
 

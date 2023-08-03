@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..fd16bc9 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -296,7 +296,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     uint256 totalSupply,
+     uint256 assetUnit
+   ) internal returns (uint256, bool) {
+-    (uint256 oldIndex, uint256 newIndex) = _getAssetIndex(rewardData, totalSupply, assetUnit);
++    (uint256 oldIndex, uint256 newIndex) = _getAssetIndex(rewardData, totalSupply, totalSupply);
+     bool indexUpdated;
+     if (newIndex != oldIndex) {
+       require(newIndex <= type(uint104).max, 'INDEX_OVERFLOW');

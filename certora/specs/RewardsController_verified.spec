@@ -26,12 +26,14 @@ methods {
     function isContractHarness(address) external returns (bool) envfree;
     function getRevisionHarness() external returns (uint256) envfree;
     function getEmissionManagerHarness() external returns (address) envfree;
+    function getRewardsHarness(uint256, uint256, uint256, uint256) external returns (uint256) envfree;
 
     // Harness
     function getUserAssetBalanceHarness(address[], address) external returns(address, uint256, uint256);
     function updateDataMultipleHarness(address) external;
     function updateDataHarness(address, address, uint256, uint256) external;
     function updateRewardDataHarness(address, address, uint256, uint256) external;
+    function updateUserDataHarness(address, address, address, uint256, uint256, uint256) external returns (uint256, bool);
     function configureAssetsHarness(uint88, uint32, address, address, address, address) external;
     function claimRewardsHarness(address[], uint256, address, address, address, address) external returns (uint256);
     function claimAllRewardsHarness(address[], address, address, address) external returns (address[], uint256[]);
@@ -60,11 +62,12 @@ methods {
     function getDistributionEnd(address, address) external returns (uint256) envfree; 
     function getRewardsList() external returns (address[]) envfree; 
     function getRewardsByAsset(address) external returns (address[]) envfree; 
-    function setDistributionEnd(address, address, uint32) external envfree;
 
     // RewardsDistributor
     function getAssetIndex(address, address) external returns (uint256, uint256); 
     function getUserRewards(address[], address, address) external returns (uint256); 
+    function setEmissionPerSecond(address, address[], uint88[]) external;
+    function setDistributionEnd(address, address, uint32) external;
 
     // AToken    
     function _.scaledBalanceOf(address) external => DISPATCHER(true);
@@ -124,7 +127,8 @@ definition GETTERS_NEVER_REVERTED(method f) returns bool =
     || f.selector == sig:getEmissionManager().selector;
 
 definition MAX_UINT256() returns uint256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-                                           
+definition MAX_UINT104() returns uint256 = 0xffffffffffffffffffffffffff;
+                                             
 ////////////////// FUNCTIONS //////////////////////
 
 // CVL functions for precondition assumptions 
@@ -137,6 +141,15 @@ function setupUser(env e, address user) {
     require user != transferStrategyAddress;
 
     require ATokenAddress.scaledBalanceOf(e, user) <= ATokenAddress.scaledTotalSupply(e);
+}
+
+function setupTokenDecimals(address token) {
+    require getAssetDecimals(token) > 4;
+    require getAssetDecimals(token) < 35;
+}
+
+function setupTokenTotalSupply(env e, address token) {
+    require ATokenAddress.scaledTotalSupply(e) >= require_uint256(1000 * 10 ^ getAssetDecimals(ATokenAddress));
 }
 
 function setup(env e) {
@@ -153,11 +166,6 @@ function setup(env e) {
     require getAssetAvailableReward(ATokenAddress, 0) == rewardTokenAddress;
     require getAssetAvailableRewardsCount(ATokenAddress) == 1;
     
-    require getAssetDecimals(ATokenAddress) > 0;
-    require getAssetDecimals(ATokenAddress) < 77;
-    require ATokenAddress.scaledTotalSupply(e) 
-        >= require_uint256(1000 * 10 ^ getAssetDecimals(ATokenAddress));
-
     require rewardTokenAddress != transferStrategyAddress;
     require rewardTokenAddress != ATokenAddress;
     require rewardTokenAddress != currentContract;
@@ -380,6 +388,7 @@ rule configureAssetsIntegrity(
 
     // ATokenAddress will be added when zero decimals
     bool zeroDecimals = getAssetDecimals(asset) == 0;
+    require getAssetDecimals(asset) == ATokenAddress.decimals(e);
 
     // rewardTokenAddress will be added when was not enabled
     bool rewardEnabled;
@@ -775,9 +784,15 @@ rule claimRewardsZeroAmountReturnZero(env e, address[] assets, uint256 amount, a
 
     setup(e);
 
-    uint256 claimed = claimRewards(e, assets, amount, to, reward);
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    require amount == 0;
 
-    assert amount == 0 => claimed == 0;
+    storage before = lastStorage;
+    uint256 claimed = claimRewards(e, assets, amount, to, reward);
+    storage after = lastStorage;
+
+    assert claimed == 0 && before[currentContract] == after[currentContract];
 }
 
 // [bugs 97-101] _transferRewards() integrity
@@ -987,9 +1002,9 @@ rule getUserAccruedRewardsIntegrity(env e, address user, address asset, address 
 }
 
 // [bug 112] setDistributionEnd() integrity
-rule setDistributionEndIntegrity(address asset, address reward, address user, uint32 newDistributionEnd) {
+rule setDistributionEndIntegrity(env e, address asset, address reward, address user, uint32 newDistributionEnd) {
 
-    setDistributionEnd(asset, reward, newDistributionEnd);
+    setDistributionEnd(e, asset, reward, newDistributionEnd);
 
     assert require_uint256(newDistributionEnd) == getAssetRewardDistributionEnd(asset, reward);   
 } 
@@ -1034,4 +1049,112 @@ rule updateDataMultipleIntegrity(env e, address[] assets, address user) {
 
     // _updateDataMultiple() storage changes for `ATokenAddress` asset should be equal to _updateData(`ATokenAddress`)
     assert storage1[currentContract] == storage2[currentContract];
+}
+
+// [bugs 137-143] setEmissionPerSecond() integrity
+rule setEmissionPerSecondiIntegrity(env e, address asset, address[] rewards, uint88[] newEmissionsPerSecond) {
+
+    setup(e);
+
+    require asset == ATokenAddress;
+    require rewards.length == 1;
+    require rewards[0] == rewardTokenAddress;
+
+    bool zeroDecimals = getAssetDecimals(asset) == 0;
+    bool zeroLastUpdateTimestamp = getAssetRewardLastUpdateTimestamp(asset, rewardTokenAddress) == 0;
+
+    uint256 oldIndex;
+    uint256 newIndex;
+    oldIndex, newIndex = getAssetIndexHarness(e, asset, rewardTokenAddress);
+
+    setEmissionPerSecond@withrevert(e, asset, rewards, newEmissionsPerSecond);
+    bool reverted = lastReverted;
+
+    uint256 currentIndex = getAssetRewardIndex(asset, rewardTokenAddress);
+
+    assert rewards.length != newEmissionsPerSecond.length => reverted; // bug137
+    assert zeroDecimals => reverted; // bug138
+    assert zeroLastUpdateTimestamp => reverted; // bug139
+    assert !reverted => getAssetRewardEmissionPerSecond(asset, rewardTokenAddress) == require_uint256(newEmissionsPerSecond[0]); // bug140
+
+    // set in _updateRewardData(), bugs141-143
+    assert !reverted => require_uint32(getAssetRewardLastUpdateTimestamp(asset, rewardTokenAddress)) == require_uint32(e.block.timestamp); 
+    assert !reverted && oldIndex == newIndex => currentIndex == oldIndex; 
+    assert !reverted && oldIndex != newIndex => currentIndex == newIndex;
+
+    // onlyEmissionManager() modifier
+    assert !reverted => e.msg.sender == getEmissionManager();
+}
+
+// [bugs 144-153] _updateRewardData() integrity
+rule updateRewardDataIntegrity(env e, address asset, address reward, uint256 totalSupply, uint256 assetUnit) {
+
+    setup(e);
+
+    require asset == ATokenAddress;
+    require reward == rewardTokenAddress;
+    require totalSupply == ATokenAddress.scaledTotalSupply(e);
+    uint8 decimals = getAssetDecimals(ATokenAddress);
+    require assetUnit == require_uint256(10 ^ decimals);
+
+    uint256 oldIndex;
+    uint256 newIndex;
+    oldIndex, newIndex = getAssetIndexHarness(e, asset, reward);
+
+    bool result;
+    uint256 resultIndex;
+    resultIndex, result = updateRewardDataHarness@withrevert(e, asset, reward, totalSupply, assetUnit);
+    bool reverted = lastReverted;
+
+    uint256 currentIndex = getAssetRewardIndex(asset, reward);
+
+    assert !reverted => require_uint32(getAssetRewardLastUpdateTimestamp(asset, reward)) == require_uint32(e.block.timestamp); 
+    assert !reverted && oldIndex == newIndex => currentIndex == oldIndex; 
+    assert !reverted && oldIndex != newIndex => currentIndex == newIndex;
+    assert !reverted => result == (oldIndex != newIndex);
+
+    assert newIndex > MAX_UINT104() => reverted;
+}
+
+// [bugs 154-164] _updateUserData() integrity
+rule updateUserDataIntegrity(env e, address asset, address reward, address user, uint256 userBalance, uint256 newAssetIndex, uint256 assetUnit) {
+
+    setup(e);
+    setupUser(e, user);
+
+    require asset == ATokenAddress;
+    require reward == rewardTokenAddress;
+    require userBalance == ATokenAddress.scaledBalanceOf(e, user);
+    require newAssetIndex < MAX_UINT104();
+
+    setupTokenDecimals(asset); 
+    uint256 decimals = getAssetDecimals(asset);
+    require assetUnit == require_uint256(10 ^ decimals);
+
+    uint256 index = getAssetRewardUserIndex(user, asset, reward);
+    require index <= newAssetIndex;
+
+    uint256 accruedBefore = getAssetRewardUserAccrued(user, asset, reward);
+    uint256 rewardsAccruedExpected = getRewardsHarness(userBalance, newAssetIndex, index, assetUnit);
+
+    uint256 rewardsAccrued;
+    bool dataUpdated;
+    rewardsAccrued, dataUpdated = updateUserDataHarness(e, asset, reward, user, userBalance, newAssetIndex, assetUnit);
+
+    uint256 accruedAfter = getAssetRewardUserAccrued(user, asset, reward);
+
+    // TODO: Should not revert
+
+    assert dataUpdated == (index != newAssetIndex);
+    assert dataUpdated => require_uint104(getAssetRewardUserIndex(user, asset, reward)) == require_uint104(newAssetIndex);
+    assert dataUpdated => rewardsAccrued == rewardsAccruedExpected;
+
+    // `accrued` should be updated
+    assert dataUpdated && userBalance != 0 => accruedAfter == require_uint256(require_uint128(accruedBefore) + require_uint256(rewardsAccrued));
+
+    // `index` wasn't changed
+    assert !dataUpdated => getAssetRewardUserIndex(user, asset, reward) == index;
+
+    // `accrued` wasn't changed
+    assert !dataUpdated || userBalance == 0 => accruedAfter == accruedBefore && rewardsAccrued == 0;
 }

@@ -116,6 +116,10 @@ contract RewardsControllerHarness is RewardsController {
         return _getUserReward(user, reward, _getUserAssetBalances(assets, user));
     }
 
+    function getRewardsHarness(uint256 userBalance, uint256 reserveIndex, uint256 userIndex, uint256 assetUnit) external returns (uint256) {
+        return _getRewards(userBalance, reserveIndex, userIndex, assetUnit);
+    }
+
     function updateDataMultipleHarness(address[] calldata assets, address user) external {
         _updateDataMultiple(user, _getUserAssetBalances(assets, user));
     }
@@ -127,6 +131,11 @@ contract RewardsControllerHarness is RewardsController {
     function updateRewardDataHarness(address asset, address reward, uint256 totalSupply, uint256 assetUnit) external returns (uint256, bool) {
         RewardsDataTypes.RewardData storage rewardConfig = _assets[asset].rewards[reward];
         return _updateRewardData(rewardConfig, totalSupply, assetUnit);
+    }
+
+    function updateUserDataHarness(address asset, address reward, address user, uint256 userBalance, uint256 newAssetIndex, uint256 assetUnit) external returns (uint256, bool) {
+        RewardsDataTypes.RewardData storage rewardConfig = _assets[asset].rewards[reward];
+        return _updateUserData(rewardConfig, user, userBalance, newAssetIndex, assetUnit);
     }
 
     function configureAssetsHarness(
