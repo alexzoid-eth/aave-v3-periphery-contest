@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..408fc53 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -73,7 +73,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       _getAssetIndex(
+         rewardData,
+         IScaledBalanceToken(asset).scaledTotalSupply(),
+-        10**_assets[asset].decimals
++        /// BinaryOpMutation(`**` |==> `+`) of: `10**_assets[asset].decimals`
++        10+_assets[asset].decimals
+       );
+   }
+ 

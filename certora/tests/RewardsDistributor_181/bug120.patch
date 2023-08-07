@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..0a647a6 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -359,7 +359,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     uint256 assetUnit;
+     uint256 numAvailableRewards = _assets[asset].availableRewardsCount;
+     unchecked {
+-      assetUnit = 10**_assets[asset].decimals;
++      /// BinaryOpMutation(`**` |==> `%`) of: `assetUnit = 10**_assets[asset].decimals;`
++      assetUnit = 10%_assets[asset].decimals;
+     }
+ 
+     if (numAvailableRewards == 0) {

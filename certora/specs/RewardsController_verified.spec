@@ -1102,7 +1102,7 @@ rule getUserRewardsIntegrity(env e, address[] assets, address user, address rewa
     assert rewards1 == rewards2;
 }
 
-// [bugs 186-189] getAllUserRewards() integrity
+// [bugs 186-190] getAllUserRewards() integrity
 rule getAllUserRewardsIntegrity(env e, address[] assets, address user) {
 
     setup(e);
@@ -1116,6 +1116,8 @@ rule getAllUserRewardsIntegrity(env e, address[] assets, address user) {
     rewardsList, unclaimedAmounts = getAllUserRewards(e, assets, user);
 
     // One asset, one reward
+    assert rewardsList.length == 1;
+    assert rewardsList[0] == rewardTokenAddress;
     assert unclaimedAmounts[0] == getUserRewards(e, assets, user, rewardTokenAddress);
 }
 

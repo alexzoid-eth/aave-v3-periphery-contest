@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..5c7e4b6 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -135,7 +135,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     address to,
+     address reward
+   ) external override onlyAuthorizedClaimers(msg.sender, user) returns (uint256) {
+-    require(user != address(0), 'INVALID_USER_ADDRESS');
++    /// RequireMutation(`user != address(0)` |==> `true`) of: `require(user != address(0), 'INVALID_USER_ADDRESS');`
++    require(true, 'INVALID_USER_ADDRESS');
+     require(to != address(0), 'INVALID_TO_ADDRESS');
+     return _claimRewards(assets, amount, msg.sender, user, to, reward);
+   }

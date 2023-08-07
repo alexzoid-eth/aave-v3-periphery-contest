@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..3ea96a1 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -384,7 +384,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+           assetUnit
+         );
+ 
+-        if (rewardDataUpdated || userDataUpdated) {
++        /// IfStatementMutation(`rewardDataUpdated || userDataUpdated` |==> `false`) of: `if (rewardDataUpdated || userDataUpdated) {`
++        if (false) {
+           emit Accrued(asset, reward, user, newAssetIndex, newAssetIndex, rewardsAccrued);
+         }
+       }

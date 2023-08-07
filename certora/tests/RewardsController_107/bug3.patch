@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..f89f1c3 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -37,7 +37,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+   mapping(address => IEACAggregatorProxy) internal _rewardOracle;
+ 
+   modifier onlyAuthorizedClaimers(address claimer, address user) {
+-    require(_authorizedClaimers[user] == claimer, 'CLAIMER_UNAUTHORIZED');
++    /// RequireMutation(`_authorizedClaimers[user] == claimer` |==> `false`) of: `require(_authorizedClaimers[user] == claimer, 'CLAIMER_UNAUTHORIZED');`
++    require(false, 'CLAIMER_UNAUTHORIZED');
+     _;
+   }
+ 

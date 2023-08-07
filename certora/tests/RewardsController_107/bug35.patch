@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..9aeb32d 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -202,7 +202,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     override
+     returns (RewardsDataTypes.UserAssetBalance[] memory userAssetBalances)
+   {
+-    userAssetBalances = new RewardsDataTypes.UserAssetBalance[](assets.length);
++    /// DeleteExpressionMutation(`userAssetBalances = new RewardsDataTypes.UserAssetBalance[](assets.length)` |==> `assert(true)`) of: `userAssetBalances = new RewardsDataTypes.UserAssetBalance[](assets.length);`
++    assert(true);
+     for (uint256 i = 0; i < assets.length; i++) {
+       userAssetBalances[i].asset = assets[i];
+       (userAssetBalances[i].userBalance, userAssetBalances[i].totalSupply) = IScaledBalanceToken(

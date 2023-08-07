@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..766677b 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -424,7 +424,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+   ) internal view returns (uint256 unclaimedRewards) {
+     // Add unrealized rewards
+     for (uint256 i = 0; i < userAssetBalances.length; i++) {
+-      if (userAssetBalances[i].userBalance == 0) {
++      /// IfStatementMutation(`userAssetBalances[i].userBalance == 0` |==> `true`) of: `if (userAssetBalances[i].userBalance == 0) {`
++      if (true) {
+         unclaimedRewards += _assets[userAssetBalances[i].asset]
+           .rewards[reward]
+           .usersData[user]

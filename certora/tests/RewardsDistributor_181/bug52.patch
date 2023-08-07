@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..b7bb778 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -195,7 +195,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     uint88[] calldata newEmissionsPerSecond
+   ) external override onlyEmissionManager {
+     require(rewards.length == newEmissionsPerSecond.length, 'INVALID_INPUT');
+-    for (uint256 i = 0; i < rewards.length; i++) {
++    /// DeleteExpressionMutation(`i++` |==> `assert(true)`) of: `for (uint256 i = 0; i < rewards.length; i++) {`
++    for (uint256 i = 0; i < rewards.length; assert(true)) {
+       RewardsDataTypes.AssetData storage assetConfig = _assets[asset];
+       RewardsDataTypes.RewardData storage rewardConfig = _assets[asset].rewards[rewards[i]];
+       uint256 decimals = assetConfig.decimals;

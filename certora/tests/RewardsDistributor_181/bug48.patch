@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..c62d6b9 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -211,7 +211,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       );
+ 
+       uint256 oldEmissionPerSecond = rewardConfig.emissionPerSecond;
+-      rewardConfig.emissionPerSecond = newEmissionsPerSecond[i];
++      /// DeleteExpressionMutation(`rewardConfig.emissionPerSecond = newEmissionsPerSecond[i]` |==> `assert(true)`) of: `rewardConfig.emissionPerSecond = newEmissionsPerSecond[i];`
++      assert(true);
+ 
+       emit AssetConfigUpdated(
+         asset,

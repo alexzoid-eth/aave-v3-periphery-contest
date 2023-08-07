@@ -12,7 +12,7 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
-DIR_PATH="$1" # Capture the directory path from the first parameter
+DIR_NAME="$1" # Capture the directory path from the first parameter
 shift 1 # shift arguments to exclude the first one
 MSG="[run] $@"
 
@@ -21,10 +21,10 @@ if [[ $1 =~ ^[0-9]+$ ]]
 then
   FILE_NAME="bug$1"
   shift 1 
-  MSG="[prove $FILE_NAME] $@"
+  MSG="[prove ${DIR_NAME}/$FILE_NAME] $@"
 fi
 
-PATCH_PATH="certora/tests/${DIR_PATH}/${FILE_NAME}.patch"
+PATCH_PATH="certora/tests/${DIR_NAME}/${FILE_NAME}.patch"
 
 # If the patch file exists than apply and restore a bug
 if [ -f "$PATCH_PATH" ]; then

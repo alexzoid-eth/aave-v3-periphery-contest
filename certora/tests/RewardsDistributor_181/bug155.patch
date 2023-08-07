@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..64cb009 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -480,7 +480,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     uint256 userIndex,
+     uint256 assetUnit
+   ) internal pure returns (uint256) {
+-    uint256 result = userBalance * (reserveIndex - userIndex);
++    /// BinaryOpMutation(`-` |==> `/`) of: `uint256 result = userBalance * (reserveIndex - userIndex);`
++    uint256 result = userBalance * (reserveIndex/userIndex);
+     assembly {
+       result := div(result, assetUnit)
+     }

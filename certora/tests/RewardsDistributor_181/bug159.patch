@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..127a9b8 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -508,7 +508,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       emissionPerSecond == 0 ||
+       totalSupply == 0 ||
+       lastUpdateTimestamp == block.timestamp ||
+-      lastUpdateTimestamp >= distributionEnd
++      /// SwapArgumentsOperatorMutation(`lastUpdateTimestamp >= distributionEnd` |==> `distributionEnd >= lastUpdateTimestamp`) of: `lastUpdateTimestamp >= distributionEnd`
++      distributionEnd >= lastUpdateTimestamp
+     ) {
+       return (oldIndex, oldIndex);
+     }
