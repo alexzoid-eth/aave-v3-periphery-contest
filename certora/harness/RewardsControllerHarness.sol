@@ -11,6 +11,8 @@ contract RewardsControllerHarness is RewardsController {
 
     constructor(address emissionManager) RewardsController(emissionManager) {}
 
+    // View functions
+
     function getAssetRewardIndex(address asset, address reward) external view returns (uint256) {
         return _assets[asset].rewards[reward].index;
     }
@@ -89,7 +91,7 @@ contract RewardsControllerHarness is RewardsController {
         return _isContract(contractAddress);
     }
 
-    function getRevisionHarness() external pure returns (uint256) {
+    function getRevisionHarness() external view returns (uint256) {
         return getRevision();
     }
 
@@ -116,9 +118,11 @@ contract RewardsControllerHarness is RewardsController {
         return _getUserReward(user, reward, _getUserAssetBalances(assets, user));
     }
 
-    function getRewardsHarness(uint256 userBalance, uint256 reserveIndex, uint256 userIndex, uint256 assetUnit) external returns (uint256) {
+    function getRewardsHarness(uint256 userBalance, uint256 reserveIndex, uint256 userIndex, uint256 assetUnit) external view returns (uint256) {
         return _getRewards(userBalance, reserveIndex, userIndex, assetUnit);
     }
+
+    // Non-view functions
 
     function updateDataMultipleHarness(address[] calldata assets, address user) external {
         _updateDataMultiple(user, _getUserAssetBalances(assets, user));

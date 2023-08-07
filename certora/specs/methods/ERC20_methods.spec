@@ -2,7 +2,6 @@
 methods {
     function _.name()                                external => DISPATCHER(true);
     function _.symbol()                              external => DISPATCHER(true);
-    function _.decimals()                            external => DISPATCHER(true);
     function _.totalSupply()                         external => DISPATCHER(true);
     function _.balanceOf(address)                    external => DISPATCHER(true);
     function _.allowance(address,address)            external => DISPATCHER(true);

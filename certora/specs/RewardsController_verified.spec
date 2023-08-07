@@ -53,6 +53,7 @@ methods {
     function initialize(address) external;
     function setClaimer(address, address) external;
     function handleAction(address, uint256, uint256) external;
+    function configureAssets(RewardsDataTypes.RewardsConfigInput[]) external;
 
     // RewardsDistributor envfree
     function getAssetDecimals(address) external returns (uint8) envfree;
@@ -73,6 +74,7 @@ methods {
     function _.scaledBalanceOf(address) external => DISPATCHER(true);
     function _.getScaledUserBalanceAndSupply(address) external => DISPATCHER(true);
     function _.scaledTotalSupply() external => DISPATCHER(true);
+    function _.decimals() external => ghostDecimals() expect uint256 ALL;
 
     // TransferStrategyBase
     function _.performTransfer(address, address, uint256) external => DISPATCHER(true);
@@ -82,6 +84,40 @@ methods {
 }
 
 ///////////////// DEFINITIONS //////////////////////
+
+definition VIEW_FUNCTIONS(method f) returns bool = f.isView || f.isPure;
+
+definition HARNESS_FUNCTIONS(method f) returns bool = 
+    f.selector == sig:getAssetRewardIndex(address, address).selector
+    || f.selector == sig:getAssetRewardEmissionPerSecond(address, address).selector
+    || f.selector == sig:getAssetRewardLastUpdateTimestamp(address, address).selector
+    || f.selector == sig:getAssetRewardDistributionEnd(address, address).selector
+    || f.selector == sig:getAssetRewardUserIndex(address, address, address).selector
+    || f.selector == sig:getAssetRewardUserAccrued(address, address, address).selector
+    || f.selector == sig:getRewardToken(uint256).selector
+    || f.selector == sig:getRewardsListLength().selector
+    || f.selector == sig:isRewardInList(address).selector
+    || f.selector == sig:getAssetToken(uint256).selector
+    || f.selector == sig:getAssetsListLength().selector
+    || f.selector == sig:isAssetInList(address).selector
+    || f.selector == sig:getAssetAvailableReward(address, uint128).selector
+    || f.selector == sig:getAssetAvailableRewardsCount(address).selector
+    || f.selector == sig:isRewardEnabled(address).selector
+    || f.selector == sig:isContractHarness(address).selector
+    || f.selector == sig:getRevisionHarness().selector
+    || f.selector == sig:getEmissionManagerHarness().selector
+    || f.selector == sig:getUserAssetBalanceHarness(address[], address).selector
+    || f.selector == sig:getAssetIndexHarness(address, address).selector
+    || f.selector == sig:getUserRewardsHarness(address[], address, address).selector
+    || f.selector == sig:getRewardsHarness(uint256, uint256, uint256, uint256).selector
+    || f.selector == sig:updateDataMultipleHarness(address[], address).selector
+    || f.selector == sig:updateDataHarness(address, address, uint256, uint256).selector
+    || f.selector == sig:updateRewardDataHarness(address, address, uint256, uint256).selector
+    || f.selector == sig:updateUserDataHarness(address, address, address, uint256, uint256, uint256).selector
+    || f.selector == sig:configureAssetsHarness(uint88, uint32, address, address, address, address).selector
+    || f.selector == sig:claimRewardsHarness(address[], uint256, address, address, address, address).selector
+    || f.selector == sig:claimAllRewardsHarness(address[], address, address, address).selector
+    || f.selector == sig:transferRewardsHarness(address, address, uint256).selector;
 
 definition CLAIM_REWARDS(method f) returns bool = 
     f.selector == sig:claimRewards(address[], uint256, address, address).selector;
@@ -126,8 +162,8 @@ definition GETTERS_NEVER_REVERTED(method f) returns bool =
     || f.selector == sig:getAssetDecimals(address).selector
     || f.selector == sig:getEmissionManager().selector;
 
-definition MAX_UINT256() returns uint256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 definition MAX_UINT104() returns uint256 = 0xffffffffffffffffffffffffff;
+definition MAX_UINT256() returns uint256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
                                              
 ////////////////// FUNCTIONS //////////////////////
 
@@ -144,7 +180,7 @@ function setupUser(env e, address user) {
 }
 
 function setupTokenDecimals(address token) {
-    require getAssetDecimals(token) > 4;
+    require getAssetDecimals(token) > 0;
     require getAssetDecimals(token) < 35;
 }
 
@@ -165,7 +201,9 @@ function setup(env e) {
     require getAssetToken(0) == ATokenAddress;
     require getAssetAvailableReward(ATokenAddress, 0) == rewardTokenAddress;
     require getAssetAvailableRewardsCount(ATokenAddress) == 1;
-    
+
+    require ghostDecimals() > 0;
+
     require rewardTokenAddress != transferStrategyAddress;
     require rewardTokenAddress != ATokenAddress;
     require rewardTokenAddress != currentContract;
@@ -178,6 +216,17 @@ function setup(env e) {
 
 // Ghost for `_.latestAnswer()` summarize
 ghost ghostLatestAnswer() returns int256;
+
+// Ghost for `asset.decimals()` summarize
+ghost ghostDecimals() returns uint8;
+
+// Hook for `EXTCODESIZE` opcode
+
+ghost uint256 ghostExtcodesize;
+
+hook EXTCODESIZE(address addr) uint v {
+    ghostExtcodesize = v;
+}
 
 // VersionedInitializable initial values
 
@@ -247,30 +296,35 @@ hook Sload bool enabled _isRewardEnabled[KEY address reward] STORAGE {
 
 // Ghost copy of _rewardsList[]
 
-ghost mapping(uint256 => address) ghostRewardsList {
-    init_state axiom forall uint256 x. ghostRewardsList[x] == 0;
+ghost uint128 ghostRewardsListLength {
+    init_state axiom ghostRewardsListLength == 0;
+}
+
+ghost mapping(address => bool) ghostRewardsList {
+    init_state axiom forall address reward. ghostRewardsList[reward] == false;
 }
 
 hook Sstore _rewardsList[INDEX uint256 i] address reward STORAGE {
-    ghostRewardsList[i] = reward;
+    ghostRewardsList[reward] = true;
+    ghostRewardsListLength = require_uint128(ghostRewardsListLength + 1);
 }
 
 hook Sload address reward _rewardsList[INDEX uint256 i] STORAGE {
-    require ghostRewardsList[i] == reward;
+    require ghostRewardsList[reward] == true;
 }
 
 // Ghost copy of _assetsList[]
 
-ghost mapping(uint256 => address) ghostAssetsList {
-    init_state axiom forall uint256 x. ghostAssetsList[x] == 0;
+ghost mapping(address => bool) ghostAssetsList {
+    init_state axiom forall address asset . ghostAssetsList[asset] == false;
 }
 
 hook Sstore _assetsList[INDEX uint256 i] address asset STORAGE {
-    ghostAssetsList[i] = asset;
+    ghostAssetsList[asset] = true;
 }
 
 hook Sload address asset _assetsList[INDEX uint256 i] STORAGE {
-    require ghostAssetsList[i] == asset;
+    require ghostAssetsList[asset] == true;
 }
 
 // Ghost copy of _assets[].availableRewardsCount
@@ -279,8 +333,17 @@ ghost mapping (address => uint128) ghostAssetsAvailableRewardsCount {
     init_state axiom forall address asset. ghostAssetsAvailableRewardsCount[asset] == 0;
 }
 
+ghost mapping (address => uint128) ghostAssetsAvailableRewardsCountIncremented {
+    init_state axiom forall address asset. ghostAssetsAvailableRewardsCountIncremented[asset] == ghostAssetsAvailableRewardsCount[asset];
+}
+
 hook Sstore _assets[KEY address asset].availableRewardsCount uint128 count STORAGE {
+    ghostAssetsAvailableRewardsCountIncremented[asset] = require_uint128(ghostAssetsAvailableRewardsCountIncremented[asset] + 1);
     ghostAssetsAvailableRewardsCount[asset] = count;
+}
+
+hook Sload uint128 count _assets[KEY address asset].availableRewardsCount STORAGE {
+    require ghostAssetsAvailableRewardsCount[asset] == count;
 }
 
 // Ghost copy of _assets[].decimals
@@ -296,6 +359,12 @@ hook Sstore _assets[KEY address asset].decimals uint8 decimals STORAGE {
 hook Sload uint8 decimals _assets[KEY address asset].decimals STORAGE {
     require ghostAssetsDecimals[asset] == decimals;
 }
+
+///////////////// Invariants ///////////////////////
+
+// [bug 43] Reward token which is added to the list should be enabled
+invariant rewardsInListShouldBeEnabled() forall address reward . ghostRewardsList[reward] == ghostIsRewardEnabled[reward]
+    filtered { f -> !HARNESS_FUNCTIONS(f) }
 
 ///////////////// Properties ///////////////////////
 
@@ -386,11 +455,11 @@ rule configureAssetsIntegrity(
     require asset == ATokenAddress;
     require reward == rewardTokenAddress;
 
-    // ATokenAddress will be added when zero decimals
+    // Asset token will be added when zero decimals
     bool zeroDecimals = getAssetDecimals(asset) == 0;
-    require getAssetDecimals(asset) == ATokenAddress.decimals(e);
+    require ghostDecimals() == getAssetDecimals(asset);
 
-    // rewardTokenAddress will be added when was not enabled
+    // Reward token will be added when was not enabled
     bool rewardEnabled;
     require rewardEnabled == isRewardEnabled(reward);
     bool rewardInList;
@@ -488,13 +557,18 @@ rule setRewardOracleIntegrity(env e, address reward, address rewardOracle) {
     assert !reverted => rewardOracle == getRewardOracle(reward); // bug11
 }
 
-// [bugs 14, 58] _isContract() integrity, never reverted
-rule isContractIntegrity() {
+// [bugs 14, 58, 166] _isContract() integrity, never reverted
+rule isContractIntegrity(address contractAddress) {
 
-    bool result = isContractHarness@withrevert(currentContract);
+    require ghostExtcodesize == 0;
 
+    bool result = isContractHarness@withrevert(contractAddress);
+
+    // Never reverted
     assert !lastReverted; // bug58
-    assert result; // bug14
+
+    // `ghostExtcodesize` is set in EXTCODESIZE hook
+    assert ghostExtcodesize > 0 ? result == true : result == false; // bug14, bug166
 }
 
 // [bugs 59-60] handleAction() integrity
@@ -971,7 +1045,7 @@ rule getRewardsListIntegrity(env e, uint256 i) {
     setup(e);
 
     address[] rewardsList = getRewardsList(); 
-    assert rewardsList[0] == ghostRewardsList[0]; // bug82
+    assert ghostRewardsList[rewardsList[0]]; // bug82
 }
 
 // [bug 110] getRewardsByAsset() integrity
@@ -1143,8 +1217,6 @@ rule updateUserDataIntegrity(env e, address asset, address reward, address user,
 
     uint256 accruedAfter = getAssetRewardUserAccrued(user, asset, reward);
 
-    // TODO: Should not revert
-
     assert dataUpdated == (index != newAssetIndex);
     assert dataUpdated => require_uint104(getAssetRewardUserIndex(user, asset, reward)) == require_uint104(newAssetIndex);
     assert dataUpdated => rewardsAccrued == rewardsAccruedExpected;
@@ -1157,4 +1229,13 @@ rule updateUserDataIntegrity(env e, address asset, address reward, address user,
 
     // `accrued` wasn't changed
     assert !dataUpdated || userBalance == 0 => accruedAfter == accruedBefore && rewardsAccrued == 0;
+}
+
+// [bug 167-169] _getRewards() integrity
+rule getRewardsIntegrity(uint256 userBalance, uint256 reserveIndex, uint256 userIndex, uint256 assetUnit) {
+
+    uint256 rewards = getRewardsHarness@withrevert(userBalance, reserveIndex, userIndex, assetUnit);
+
+    assert assetUnit != 0 && reserveIndex >= userIndex => !lastReverted;
+    assert rewards == require_uint256((userBalance * (reserveIndex - userIndex)) / assetUnit);
 }
