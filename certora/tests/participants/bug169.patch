@@ -7,7 +7,7 @@ index 04d057a..708d0c1 100644
      uint256 assetUnit
    ) internal pure returns (uint256) {
 -    uint256 result = userBalance * (reserveIndex - userIndex);
-+    uint256 result = reserveIndex - userIndexs;
++    uint256 result = reserveIndex - userIndex;
      assembly {
        result := div(result, assetUnit)
      }

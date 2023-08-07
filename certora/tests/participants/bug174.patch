@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..d8b6732 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -451,7 +451,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     address reward,
+     RewardsDataTypes.UserAssetBalance memory userAssetBalance
+   ) internal view returns (uint256) {
+-    RewardsDataTypes.RewardData storage rewardData = _assets[userAssetBalance.asset].rewards[
++    RewardsDataTypes.RewardData storage rewardData = _assets[reward].rewards[
+       reward
+     ];
+     uint256 assetUnit = 10**_assets[userAssetBalance.asset].decimals;

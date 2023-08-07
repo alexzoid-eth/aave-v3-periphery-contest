@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..ef03586 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -145,7 +145,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+   {
+     RewardsDataTypes.UserAssetBalance[] memory userAssetBalances = _getUserAssetBalances(
+       assets,
+-      user
++      address(0)
+     );
+     rewardsList = new address[](_rewardsList.length);
+     unclaimedAmounts = new uint256[](rewardsList.length);

@@ -40,6 +40,7 @@ methods {
     function transferRewardsHarness(address, address, uint256) external;
     function getAssetIndexHarness(address, address) external returns (uint256, uint256);
     function getUserRewardsHarness(address[], address, address) external returns (uint256);
+    function getPendingRewardsHarness(address user, address reward, address asset, uint256 userBalance, uint256 totalSupply) external returns (uint256);
 
     // RewardsController envfree
     function getRewardOracle(address) external returns (address) envfree;
@@ -69,6 +70,7 @@ methods {
     function getUserRewards(address[], address, address) external returns (uint256); 
     function setEmissionPerSecond(address, address[], uint88[]) external;
     function setDistributionEnd(address, address, uint32) external;
+    function getAllUserRewards(address[], address) external returns (address[], uint256[]);
 
     // AToken    
     function _.scaledBalanceOf(address) external => DISPATCHER(true);
@@ -164,7 +166,7 @@ definition GETTERS_NEVER_REVERTED(method f) returns bool =
 
 definition MAX_UINT104() returns uint256 = 0xffffffffffffffffffffffffff;
 definition MAX_UINT256() returns uint256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-                                             
+
 ////////////////// FUNCTIONS //////////////////////
 
 // CVL functions for precondition assumptions 
@@ -598,7 +600,7 @@ rule claimRewardsZeroAddressCheck(env e, address[] assets, uint256 amount, addre
     assert to != 0; // bug2
 }
 
-// [bug 61-63, 95] claimRewards() integrity
+// [bugs 61-63, 95] claimRewards() integrity
 rule claimRewardsIntegrity(env e, address[] assets, uint256 amount, address user, address to, address reward) {
 
     setup(e);
@@ -625,7 +627,7 @@ rule claimRewardsIntegrity(env e, address[] assets, uint256 amount, address user
     assert claimed1 == claimed2; // bug63
 }
 
-// [bug 4, 64] claimRewardsOnBehalf() from or to zero address is not allowed
+// [bugs 4, 64] claimRewardsOnBehalf() from or to zero address is not allowed
 rule claimRewardsOnBehalfZeroAddressCheck(env e, address[] assets, uint256 amount, address user, address to, address reward) {
 
     setup(e);
@@ -638,7 +640,7 @@ rule claimRewardsOnBehalfZeroAddressCheck(env e, address[] assets, uint256 amoun
     assert user != 0 && to != 0; // bug4, bug64
 }
 
-// [bug 65-68] claimRewardsOnBehalf() integrity
+// [bugs 65-68] claimRewardsOnBehalf() integrity
 rule claimRewardsOnBehalfIntegrity(env e, address[] assets, uint256 amount, address user, address to, address reward) {
 
     setup(e);
@@ -724,7 +726,7 @@ rule claimAllRewardsIntegrity(env e, address[] assets, address user, address to)
     assert storage1[rewardTokenAddress] == storage2[rewardTokenAddress];
 }
 
-// [bug 6, 76] claimAllRewardsOnBehalf() from or to zero address should revert
+// [bugs 6, 76] claimAllRewardsOnBehalf() from or to zero address should revert
 rule claimAllRewardsOnBehalfZeroAddressCheck(env e, address[] assets, address user, address to) {
 
     setup(e);
@@ -782,7 +784,7 @@ rule claimAllRewardsToSelfIntegrity(env e, address[] assets, address user, addre
     assert storage1[rewardTokenAddress] == storage2[rewardTokenAddress];
 }
 
-// [bug 1, 85] Possibility of update reward index when executing claim rewards
+// [bugs 1, 85] Possibility of update reward index when executing claim rewards
 rule claimRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, address to, address reward) 
     filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
 
@@ -813,7 +815,7 @@ rule claimRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, ad
     satisfy(indexBefore != indexAfter);
 }
 
-// [bug 86-94] Claim rewards will process token transfer when accrued available
+// [bugs 86-94] Claim rewards will process token transfer when accrued available
 rule claimRewardsTransferFunds(method f, env e, address user, address[] assets, uint256 amount, address to, address reward) 
     filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
 
@@ -1016,7 +1018,7 @@ rule _getAssetIndexIntegrity(env e, address asset, address reward) {
     uint256 lastUpdateTimestamp = getAssetRewardLastUpdateTimestamp(asset, reward);
     uint256 distributionEnd = getAssetRewardDistributionEnd(asset, reward);
 
-    // TODO: make as invariant
+    // TODO: as invariant
     require e.block.timestamp >= lastUpdateTimestamp;
 
     uint256 indexOld;
@@ -1083,7 +1085,7 @@ rule setDistributionEndIntegrity(env e, address asset, address reward, address u
     assert require_uint256(newDistributionEnd) == getAssetRewardDistributionEnd(asset, reward);   
 } 
 
-// [bug 113-115] getUserRewards() integrity`
+// [bugs 113-115] getUserRewards() integrity`
 rule getUserRewardsIntegrity(env e, address[] assets, address user, address reward) {
 
     setup(e);
@@ -1100,7 +1102,21 @@ rule getUserRewardsIntegrity(env e, address[] assets, address user, address rewa
     assert rewards1 == rewards2;
 }
 
-// [bug 116-118] _updateDataMultiple() integrity
+// [bugs 186-189] getAllUserRewards() integrity
+rule getAllUserRewardsIntegrity(env e, address[] assets, address user) {
+
+    setup(e);
+    setupUser(e, user);
+
+    address[] rewardsList; 
+    uint256[] unclaimedAmounts;
+    rewardsList, unclaimedAmounts = getAllUserRewards(e, assets, user);
+
+    // One asset, one reward
+    assert unclaimedAmounts[0] == getUserRewards(e, assets, user, rewardTokenAddress);
+}
+
+// [bugs 116-118] _updateDataMultiple() integrity
 rule updateDataMultipleIntegrity(env e, address[] assets, address user) {
 
     setup(e);
@@ -1214,6 +1230,7 @@ rule updateUserDataIntegrity(env e, address asset, address reward, address user,
     uint256 rewardsAccrued;
     bool dataUpdated;
     rewardsAccrued, dataUpdated = updateUserDataHarness(e, asset, reward, user, userBalance, newAssetIndex, assetUnit);
+    // TODO: should not revert
 
     uint256 accruedAfter = getAssetRewardUserAccrued(user, asset, reward);
 
@@ -1231,11 +1248,124 @@ rule updateUserDataIntegrity(env e, address asset, address reward, address user,
     assert !dataUpdated || userBalance == 0 => accruedAfter == accruedBefore && rewardsAccrued == 0;
 }
 
-// [bug 167-169] _getRewards() integrity
+// [bugs 179-183] _updateData() integrity
+rule updateDataIntegrity(env e, address asset, address user, uint256 userBalance, uint256 totalSupply) {
+
+    setup(e);
+    setupUser(e, user);
+    require asset == ATokenAddress;
+
+    // Assume token has normal decimals
+    setupTokenDecimals(asset);
+    uint256 decimals = getAssetDecimals(asset);
+    uint256 assetUnit;
+    require assetUnit == require_uint256(10 ^ decimals);
+
+    storage initial = lastStorage;
+
+    updateDataHarness(e, asset, user, userBalance, totalSupply) at initial;
+    storage storage1 = lastStorage;
+
+    // _updateData(): _updateRewardData() and _updateUserData()
+    bool result;
+    uint256 resultIndex;
+    resultIndex, result = updateRewardDataHarness(e, asset, rewardTokenAddress, totalSupply, assetUnit) at initial;
+    updateUserDataHarness(e, asset, rewardTokenAddress, user, userBalance, resultIndex, assetUnit);
+    storage storage2 = lastStorage;
+
+    assert storage1[currentContract] == storage2[currentContract];
+}
+
+// [bug 184] _updateData() satisfy that _updateRewardData() called
+rule updateDataCouldUpdateRewardData(env e, address asset, address reward, address user, uint256 userBalance, uint256 totalSupply) {
+
+    setup(e);
+    setupUser(e, user);
+    require asset == ATokenAddress;
+    require reward == rewardTokenAddress;
+    require userBalance == ATokenAddress.scaledBalanceOf(e, user);
+    require totalSupply == ATokenAddress.scaledTotalSupply(e);
+
+    require getAssetRewardLastUpdateTimestamp(asset, reward) != e.block.timestamp;
+
+    updateDataHarness(e, asset, user, userBalance, totalSupply);
+
+    // _updateRewardData() could set timestamp as a block.timestamp
+    satisfy(require_uint32(getAssetRewardLastUpdateTimestamp(asset, reward)) == require_uint32(e.block.timestamp));
+}
+
+// [bug 185] _updateData() satisfy that _updateUserData() called
+rule updateDataCouldUpdateUserData(env e, address asset, address reward, address user, uint256 userBalance, uint256 totalSupply) {
+
+    setup(e);
+
+    uint256 initialAccrued = getAssetRewardUserAccrued(user, asset, reward);
+
+    updateDataHarness(e, asset, user, userBalance, totalSupply);
+
+    // _updateUserData() could increase initial accrued
+    satisfy(getAssetRewardUserAccrued(user, asset, reward) > initialAccrued);
+}
+
+// [bugs 167-169] _getRewards() integrity
 rule getRewardsIntegrity(uint256 userBalance, uint256 reserveIndex, uint256 userIndex, uint256 assetUnit) {
+
+    // Division by zero
+    require assetUnit != 0;
+
+    // TODO: as invariant
+    // Underflow/overflow
+    require reserveIndex >= userIndex;
+    require require_uint256(userBalance * (reserveIndex - userIndex)) < MAX_UINT256();
 
     uint256 rewards = getRewardsHarness@withrevert(userBalance, reserveIndex, userIndex, assetUnit);
 
-    assert assetUnit != 0 && reserveIndex >= userIndex => !lastReverted;
-    assert rewards == require_uint256((userBalance * (reserveIndex - userIndex)) / assetUnit);
+    assert !lastReverted && rewards == require_uint256((userBalance * (reserveIndex - userIndex)) / assetUnit);
+}
+
+// [bugs 170-174] _getPendingRewards() integrity
+rule getPendingRewardsIntegrity(env e, address user, address reward, address asset, uint256 userBalance, uint256 totalSupply) {
+
+    setup(e);
+    setupUser(e, user);
+    setupTokenDecimals(asset);
+
+    require reward == rewardTokenAddress;
+    require asset == ATokenAddress;
+    require totalSupply == ATokenAddress.scaledTotalSupply(e);
+
+    uint256 oldIndex;
+    uint256 nextIndex;
+    oldIndex, nextIndex = getAssetIndex(e, asset, reward);
+    uint256 userIndex = getAssetRewardUserIndex(user, asset, reward);
+    uint8 decimals = getAssetDecimals(asset);
+    uint256 assetUnit = require_uint256(10 ^ decimals);
+    uint256 expectedRewards = getRewardsHarness(userBalance, nextIndex, userIndex, assetUnit);
+
+    uint256 rewards = getPendingRewardsHarness@withrevert(e, user, reward, asset, userBalance, totalSupply);
+    // TODO: should not revert
+
+    assert !lastReverted => expectedRewards == rewards;
+}
+
+// [bugs 175-178] _getUserReward() integrity
+rule getUserRewardIntegrity(env e, address[] assets, address user, address reward) {
+
+    setup(e);
+    setupUser(e, user);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    setupTokenDecimals(assets[0]);
+    require reward == rewardTokenAddress;
+
+    uint256 userBalance;
+    uint256 totalSupply;
+    userBalance, totalSupply = ATokenAddress.getScaledUserBalanceAndSupply(e, user);
+    uint256 accruedRewards = getAssetRewardUserAccrued(user, assets[0], reward);
+    uint256 pendingRewards = userBalance != 0 ? getPendingRewardsHarness(e, user, reward, assets[0], userBalance, totalSupply) : 0;
+
+    uint256 rewards = getUserRewards(e, assets, user, reward);
+
+    assert rewards == require_uint256(accruedRewards + pendingRewards);
 }

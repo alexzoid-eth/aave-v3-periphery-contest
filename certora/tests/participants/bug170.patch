@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..bd9dc14 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -454,7 +454,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     RewardsDataTypes.RewardData storage rewardData = _assets[userAssetBalance.asset].rewards[
+       reward
+     ];
+-    uint256 assetUnit = 10**_assets[userAssetBalance.asset].decimals;
++    uint256 assetUnit = _assets[userAssetBalance.asset].decimals;
+     (, uint256 nextIndex) = _getAssetIndex(rewardData, userAssetBalance.totalSupply, assetUnit);
+ 
+     return

@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..13b1925 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -380,7 +380,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+           rewardData,
+           user,
+           userBalance,
+-          newAssetIndex,
++          0,
+           assetUnit
+         );
+ 

@@ -122,6 +122,14 @@ contract RewardsControllerHarness is RewardsController {
         return _getRewards(userBalance, reserveIndex, userIndex, assetUnit);
     }
 
+    function getPendingRewardsHarness(address user, address reward, address asset, uint256 userBalance, uint256 totalSupply) external view returns (uint256) {
+        RewardsDataTypes.UserAssetBalance memory userAssetBalance;
+        userAssetBalance.asset = asset;
+        userAssetBalance.userBalance = userBalance;
+        userAssetBalance.totalSupply = totalSupply;
+        return _getPendingRewards(user, reward, userAssetBalance);
+    }
+
     // Non-view functions
 
     function updateDataMultipleHarness(address[] calldata assets, address user) external {
