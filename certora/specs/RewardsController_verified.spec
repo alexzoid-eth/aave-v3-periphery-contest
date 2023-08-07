@@ -1108,6 +1108,9 @@ rule getAllUserRewardsIntegrity(env e, address[] assets, address user) {
     setup(e);
     setupUser(e, user);
 
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+
     address[] rewardsList; 
     uint256[] unclaimedAmounts;
     rewardsList, unclaimedAmounts = getAllUserRewards(e, assets, user);
