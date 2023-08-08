@@ -902,7 +902,7 @@ rule claimRewardsZeroAmountReturnZero(env e, address[] assets, uint256 amount, a
     assert claimed == 0 && before[currentContract] == after[currentContract];
 }
 
-// [RewardsController_107 47,49,54,67] _claimRewards() integrity
+// [RewardsController_107 54] _claimRewards() integrity
 rule claimRewardsInternalIntegrity(env e, address[] assets, uint256 amount, address claimer, address user, address to, address reward) {
     
     setup(e);
@@ -914,8 +914,9 @@ rule claimRewardsInternalIntegrity(env e, address[] assets, uint256 amount, addr
 
     updateDataMultipleHarness(e, assets, user);
 
-    uint256 accrued0Before = getAssetRewardUserAccrued(user, assets[0], reward);
-    require amount != accrued0Before;
+    uint256 accruedBefore = getAssetRewardUserAccrued(user, assets[0], reward);
+    require accruedBefore != 0;
+    require amount != accruedBefore;
 
     uint256 totalRewards = claimRewardsHarness@withrevert(e, assets, amount, claimer, user, to, reward);
     bool reverted = lastReverted;
@@ -926,15 +927,37 @@ rule claimRewardsInternalIntegrity(env e, address[] assets, uint256 amount, addr
     assert amount == 0 => !reverted && totalRewards == 0;
 
     // totalRewards and accrued check
-    assert !reverted && amount != 0 && accrued0Before <= amount 
-        => totalRewards == accrued0Before && accrued0After == 0;
+    assert !reverted && amount != 0 && accruedBefore <= amount 
+        => totalRewards == accruedBefore && accrued0After == 0;
 
-    uint256 difference = accrued0Before > amount ? require_uint256(accrued0Before - amount) : 0;
-    assert !reverted && amount != 0 && accrued0Before > amount 
-        => totalRewards == require_uint256(accrued0Before - difference) && accrued0After == difference;
+    uint256 difference = accruedBefore > amount ? require_uint256(accruedBefore - amount) : 0;
+    assert !reverted && amount != 0 && accruedBefore > amount 
+        => totalRewards == require_uint256(accruedBefore - difference) && accrued0After == difference;
+}
 
-    // TODO: check that transfer() was not executed when totalRewards is zero
-    // assert (!reverted && totalRewards == 0) => transferExecuted == false; // RewardsController_107/bug67
+// [RewardsController_107 47] _claimRewards() integrity
+rule claimRewardsInternalAmountGTAccruedPossibleClaimed(env e, address[] assets, uint256 amount, address claimer, address user, address to, address reward) {
+    
+    setup(e);
+    setupUser(e, user);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    require reward == rewardTokenAddress;
+    require amount != 0;
+
+    updateDataMultipleHarness(e, assets, user);
+
+    uint256 accruedBefore = getAssetRewardUserAccrued(user, assets[0], reward);
+    require accruedBefore != 0;
+    require accruedBefore < amount;
+
+    uint256 totalRewards = claimRewardsHarness@withrevert(e, assets, amount, claimer, user, to, reward);
+    bool reverted = lastReverted;
+
+    uint256 accrued0After = getAssetRewardUserAccrued(user, assets[0], reward);
+
+    satisfy(!reverted && accrued0After == 0 && totalRewards == accruedBefore);
 }
 
 // [RewardsController_107 72] _claimAllRewards() integrity
