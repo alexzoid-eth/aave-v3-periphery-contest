@@ -935,7 +935,7 @@ rule claimRewardsInternalIntegrity(env e, address[] assets, uint256 amount, addr
         => totalRewards == require_uint256(accruedBefore - difference) && accrued0After == difference;
 }
 
-// [RewardsController_107 47] _claimRewards() integrity
+// [RewardsController_107 47] _claimRewards() amount greater than accrued
 rule claimRewardsInternalAmountGTAccruedPossibleClaimed(env e, address[] assets, uint256 amount, address claimer, address user, address to, address reward) {
     
     setup(e);
@@ -960,10 +960,30 @@ rule claimRewardsInternalAmountGTAccruedPossibleClaimed(env e, address[] assets,
     satisfy(!reverted && accrued0After == 0 && totalRewards == accruedBefore);
 }
 
-// [RewardsController_107 72] _claimAllRewards() integrity
-rule claimAllRewardsInternalIntegrity(env e, address[] assets, address claimer, address user, address to) {
+// [RewardsController_107 49] _claimRewards() amount less than accrued
+rule claimRewardsInternalAmountLTAccruedPossibleClaimed(env e, address[] assets, uint256 amount, address claimer, address user, address to, address reward) {
+    
+    setup(e);
+    setupUser(e, user);
 
-    assert true;
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    require reward == rewardTokenAddress;
+    require amount != 0;
+
+    updateDataMultipleHarness(e, assets, user);
+
+    uint256 accruedBefore = getAssetRewardUserAccrued(user, assets[0], reward);
+    require accruedBefore != 0;
+    require accruedBefore > amount;
+
+    uint256 totalRewards = claimRewardsHarness@withrevert(e, assets, amount, claimer, user, to, reward);
+    bool reverted = lastReverted;
+
+    uint256 accrued0After = getAssetRewardUserAccrued(user, assets[0], reward);
+
+    uint256 difference = require_uint256(accruedBefore - amount);
+    satisfy(!reverted && totalRewards == require_uint256(accruedBefore - difference) && accrued0After == difference);
 }
 
 // [participants 97-101, RewardsController_107 92-93] _transferRewards() integrity
