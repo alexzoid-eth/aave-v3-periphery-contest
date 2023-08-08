@@ -32,6 +32,9 @@ contract DummyERC20Impl {
         return b[account];
     }
     function transfer(address recipient, uint256 amount) external returns (bool) {
+        if(recipient == address(0)) {
+            return false;
+        }
         b[msg.sender] = sub(b[msg.sender], amount);
         b[recipient] = add(b[recipient], amount);
         return true;
