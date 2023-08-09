@@ -1,13 +1,13 @@
-diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
-index cfa4d82..1b02444 100644
---- a/contracts/rewards/RewardsController.sol
-+++ b/contracts/rewards/RewardsController.sol
-@@ -236,7 +236,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
-     uint256 totalRewards;
- 
-     _updateDataMultiple(user, _getUserAssetBalances(assets, user));
--    for (uint256 i = 0; i < assets.length; i++) {
-+    for (uint256 i = 0; i < assets.length; i--) {
-       address asset = assets[i];
-       totalRewards += _assets[asset].rewards[reward].usersData[user].accrued;
- 
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..16866f6 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -400,7 +400,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     address user,
+     RewardsDataTypes.UserAssetBalance[] memory userAssetBalances
+   ) internal {
+-    for (uint256 i = 0; i < userAssetBalances.length; i++) {
++    for (uint256 i = 0; i < userAssetBalances.length; i--) {
+       _updateData(
+         userAssetBalances[i].asset,
+         user,

@@ -612,9 +612,9 @@ rule claimRewardsInternalAmountGTAccruedPossibleClaimed(env e, address[] assets,
     uint256 totalRewards = claimRewardsHarness@withrevert(e, assets, amount, claimer, user, to, reward);
     bool reverted = lastReverted;
 
-    uint256 accrued0After = getAssetRewardUserAccrued(user, assets[0], reward);
+    uint256 accruedAfter = getAssetRewardUserAccrued(user, assets[0], reward);
 
-    satisfy(!reverted && accrued0After == 0 && totalRewards == accruedBefore);
+    satisfy(!reverted && accruedAfter == 0 && totalRewards == accruedBefore);
 }
 
 // [RewardsController_107 49] _claimRewards() amount less than accrued

@@ -105,37 +105,7 @@ rule getUserAssetBalancesIteration(env e, address[] assets, address user) {
     satisfy(getUserAssetBalancesHarnessSum(e, assets, user) == getUserAssetBalancesSum(e, assets, user));
 }
 
-// [participants 199-200] Possibility of update reward index when executing claim rewards with several assets
-rule claimRewardsPossibleUpdateRewardIndex2(method f, env e, address[] assets, address to, address reward) 
-    filtered { f -> CLAIM_REWARDS_FUNCTION(f) || CLAIM_ALL_REWARDS_FUNCTION(f) } {
-
-    setup(e);
-
-    require assets.length == 2;
-    require assets[0] == ATokenAddress;
-    require assets[1] == ATokenBAddress;
-    require reward == rewardTokenAddress;
-
-    // Precondition assumptions in _getAssetIndex()
-    require getAssetRewardEmissionPerSecond(assets[1], reward) != 0;
-    require getAssetRewardLastUpdateTimestamp(assets[1], reward) != e.block.timestamp;
-    require getAssetRewardLastUpdateTimestamp(assets[1], reward) < require_uint256(getAssetRewardDistributionEnd(assets[1], reward));
-
-    uint256 indexBefore = getAssetRewardIndex(assets[1], reward);
-
-    if(CLAIM_REWARDS_FUNCTION(f)) {
-        uint256 amount;
-        claimRewards(e, assets, amount, to, reward);
-    } else if (CLAIM_ALL_REWARDS_FUNCTION(f)) {
-        claimAllRewards(e, assets, to);
-    }
-
-    uint256 indexAfter = getAssetRewardIndex(assets[1], reward);
-
-    satisfy(indexBefore != indexAfter);
-}
-
-// [participants 201] Iteration in _updateDataMultiple()
+// [participants 199] Iteration in _updateDataMultiple()
 rule updateDataMultipleIteration(env e, address[] assets, address user) {
 
     setup(e);
