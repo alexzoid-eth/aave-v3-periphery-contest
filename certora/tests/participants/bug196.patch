@@ -1,0 +1,12 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..8b5ca1f 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -68,6 +68,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     override
+     returns (uint256, uint256)
+   {
++    assert(false);
+     RewardsDataTypes.RewardData storage rewardData = _assets[asset].rewards[reward];
+     return
+       _getAssetIndex(

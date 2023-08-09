@@ -129,19 +129,19 @@ definition HARNESS_FUNCTIONS(method f) returns bool =
     || f.selector == sig:claimAllRewardsHarness(address[], address, address, address).selector
     || f.selector == sig:transferRewardsHarness(address, address, uint256).selector;
 
-definition CLAIM_REWARDS(method f) returns bool = 
+definition CLAIM_REWARDS_FUNCTION(method f) returns bool = 
     f.selector == sig:claimRewards(address[], uint256, address, address).selector;
 
 definition CLAIM_REWARDS_FUNCTIONS(method f) returns bool = 
-    CLAIM_REWARDS(f)
+    CLAIM_REWARDS_FUNCTION(f)
     || f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector
     || f.selector == sig:claimRewardsToSelf(address[], uint256, address).selector;
 
-definition CLAIM_ALL_REWARDS(method f) returns bool = 
+definition CLAIM_ALL_REWARDS_FUNCTION(method f) returns bool = 
     f.selector == sig:claimAllRewards(address[], address).selector;
 
 definition CLAIM_ALL_REWARDS_FUNCTIONS(method f) returns bool = 
-    CLAIM_ALL_REWARDS(f) || f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector;
+    CLAIM_ALL_REWARDS_FUNCTION(f) || f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector;
 
 definition HANDLE_FUNCTION(method f) returns bool = 
     f.selector == sig:handleAction(address, uint256, uint256).selector;
@@ -158,7 +158,7 @@ definition ONLY_EMISSION_MANAGER_FUNCTIONS(method f) returns bool =
     || f.selector == sig:setDistributionEnd(address, address, uint32).selector
     || f.selector == sig:setEmissionPerSecond(address, address[], uint88[]).selector;
 
-definition GETTERS_NEVER_REVERTED(method f) returns bool = 
+definition NEVER_REVERTED_FUNCTIONS(method f) returns bool = 
     f.selector == sig:getClaimer(address).selector
     || f.selector == sig:getRevisionHarness().selector
     || f.selector == sig:getRewardOracle(address).selector
@@ -171,6 +171,20 @@ definition GETTERS_NEVER_REVERTED(method f) returns bool =
     || f.selector == sig:getUserAccruedRewards(address, address).selector
     || f.selector == sig:getAssetDecimals(address).selector
     || f.selector == sig:getEmissionManager().selector;
+
+definition POSSIBLY_NOT_REVERTED_FUNCTIONS(method f) returns bool = 
+    f.selector == sig:configureAssets(RewardsDataTypes.RewardsConfigInput[]).selector
+    || f.selector == sig:handleAction(address, uint256, uint256).selector
+    || f.selector == sig:claimRewards(address[], uint256, address, address).selector
+    || f.selector == sig:claimRewardsOnBehalf(address[], uint256, address, address, address).selector
+    || f.selector == sig:claimRewardsToSelf(address[], uint256, address).selector
+    || f.selector == sig:claimAllRewards(address[], address).selector
+    || f.selector == sig:claimAllRewardsOnBehalf(address[], address, address).selector
+    || f.selector == sig:claimAllRewardsToSelf(address[]).selector
+    || f.selector == sig:setEmissionPerSecond(address, address[], uint88[]).selector
+    || f.selector == sig:getAssetIndex(address, address).selector
+    || f.selector == sig:getUserRewards(address[], address, address).selector
+    || f.selector == sig:getAllUserRewards(address[], address).selector;
 
 definition MAX_UINT32() returns uint256 = 0xffffffff;
 definition MAX_UINT88() returns uint256 = 0xffffffffffffffffffffff;
@@ -231,6 +245,9 @@ function setup(env e) {
 
 ///////////////// Ghosts & hooks ///////////////////////
 
+// Ghost for access _transferStrategy[reward]
+ghost bool ghostTransferStrategyRead;
+
 // Ghost for `_.latestAnswer()` summarize
 ghost ghostLatestAnswer() returns int256;
 
@@ -281,6 +298,7 @@ hook Sstore _transferStrategy[KEY address reward] address strategy STORAGE {
 
 hook Sload address strategy _transferStrategy[KEY address reward] STORAGE {
     require ghostTransferStrategy[reward] == strategy;
+    ghostTransferStrategyRead = true;
 }
 
 // Ghost copy of _rewardOracle[]
@@ -377,7 +395,7 @@ hook Sload uint8 decimals _assets[KEY address asset].decimals STORAGE {
     require ghostAssetsDecimals[asset] == decimals;
 }
 
-// Ghost copy of _assets[asset0].rewards[reward].lastUpdateTimestamp
+// Ghost copy of _assets[asset].rewards[reward].lastUpdateTimestamp
 
 ghost mapping (address => uint32) ghostAssetLastUpdateTimestamp {
     init_state axiom forall address reward. ghostAssetLastUpdateTimestamp[reward] == 0;
@@ -389,6 +407,22 @@ hook Sstore _assets[KEY address asset].rewards[KEY address reward].lastUpdateTim
 
 hook Sload uint32 lastUpdateTimestamp _assets[KEY address asset].rewards[KEY address reward].lastUpdateTimestamp STORAGE {
     require ghostAssetLastUpdateTimestamp[reward] == lastUpdateTimestamp;
+}
+
+// Hook write access to _assets[asset].rewards[reward].usersData[user].accrued
+
+ghost bool ghostUsersDataAccruedWrite;
+
+hook Sstore _assets[KEY address asset].rewards[KEY address reward].usersData[KEY address user].accrued uint128 accrued STORAGE {
+    ghostUsersDataAccruedWrite = true;
+}
+
+// Hook read access to _assets[asset].rewards[reward].usersData[user].index
+
+ghost bool ghostUsersDataIndexRead;
+
+hook Sload uint104 index _assets[KEY address asset].rewards[KEY address reward].usersData[KEY address user].index STORAGE {
+    ghostUsersDataIndexRead = true;
 }
 
 ///////////////// Invariants ///////////////////////
@@ -435,7 +469,7 @@ rule gettersIntegrity(address asset, address reward, address user) {
 
 // [participants 26-37] getters should not revert 
 rule gettersShouldNotRevert(env e, method f, address asset, address reward, address user) 
-    filtered { f -> GETTERS_NEVER_REVERTED(f) } {
+    filtered { f -> NEVER_REVERTED_FUNCTIONS(f) } {
 
     setup(e);
 
@@ -471,7 +505,7 @@ rule gettersShouldNotRevert(env e, method f, address asset, address reward, addr
     assert !lastReverted;
 }
 
-// [participants 9, 38-50, 128-136] configureAssets() integrity
+// [participants 9, 38-50, 128-136; RewardsDistributor_181 54] configureAssets() integrity
 rule configureAssetsIntegrity(
     env e, 
     uint88 emissionPerSecond, 
@@ -485,6 +519,8 @@ rule configureAssetsIntegrity(
     require e.msg.sender == getEmissionManager();
     require asset == ATokenAddress;
     require reward == rewardTokenAddress;
+
+    bool assetInListBefore = isAssetInList(asset);
 
     // Asset token will be added when zero decimals
     bool zeroDecimals = getAssetDecimals(asset) == 0;
@@ -537,6 +573,8 @@ rule configureAssetsIntegrity(
     assert require_uint32(getAssetRewardLastUpdateTimestamp(asset, reward)) == require_uint32(e.block.timestamp); // bug128
     assert oldIndex == newIndex => currentIndex == oldIndex; // bug128-136
     assert oldIndex != newIndex => currentIndex == newIndex;
+
+    assert !assetInListBefore => zeroDecimals == isAssetInList(asset); // RewardsDistributor_181/bug54
 }
 
 // [participants 8, 51-55] onlyEmissionManager() security modifier
@@ -572,7 +610,8 @@ rule setTransferStrategyIntegrity(env e, address reward, address transferStrateg
     assert e.msg.sender != getEmissionManager() => reverted; // bug52
     assert transferStrategy == 0 => reverted; // bug13
     assert isContractHarness(transferStrategy) == false => reverted; // bug12
-    assert e.msg.sender == getEmissionManager() && transferStrategy != 0 && isContractHarness(transferStrategy) => !reverted; // RewardsController_107/bug101
+    assert e.msg.sender == getEmissionManager() && transferStrategy != 0 && isContractHarness(transferStrategy) 
+        => !reverted; // RewardsController_107/bug101
     assert !reverted => getTransferStrategy(reward) == transferStrategy; // bug57
 }
 
@@ -586,7 +625,8 @@ rule setRewardOracleIntegrity(env e, address reward, address rewardOracle) {
 
     assert e.msg.sender != getEmissionManager() => reverted; // bug8
     assert ghostLatestAnswer() <= 0 => reverted; // bug10
-    assert e.msg.sender == getEmissionManager() && ghostLatestAnswer() > 0 => !reverted; // RewardsController_107/bug105
+    assert e.msg.sender == getEmissionManager() && ghostLatestAnswer() > 0 
+        => !reverted; // RewardsController_107/bug105
     assert !reverted => rewardOracle == getRewardOracle(reward); // bug11
 }
 
@@ -817,7 +857,7 @@ rule claimAllRewardsToSelfIntegrity(env e, address[] assets, address user, addre
 
 // [participants 1, 85] Possibility of update reward index when executing claim rewards
 rule claimRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, address to, address reward) 
-    filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
+    filtered { f -> CLAIM_REWARDS_FUNCTION(f) || CLAIM_ALL_REWARDS_FUNCTION(f) } {
 
     setup(e);
     setupUser(e, to);
@@ -834,10 +874,10 @@ rule claimRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, ad
 
     uint256 indexBefore = getAssetRewardIndex(assets[0], reward);
 
-    if(CLAIM_REWARDS(f)) {
+    if(CLAIM_REWARDS_FUNCTION(f)) {
         uint256 amount;
         claimRewards(e, assets, amount, to, reward);
-    } else if (CLAIM_ALL_REWARDS(f)) {
+    } else if (CLAIM_ALL_REWARDS_FUNCTION(f)) {
         claimAllRewards(e, assets, to);
     }
 
@@ -848,7 +888,7 @@ rule claimRewardsPossibleUpdateRewardIndex(method f, env e, address[] assets, ad
 
 // [participants 86-94] Claim rewards will process token transfer when accrued available
 rule claimRewardsTransferFunds(method f, env e, address user, address[] assets, uint256 amount, address to, address reward) 
-    filtered { f -> CLAIM_REWARDS(f) || CLAIM_ALL_REWARDS(f) } {
+    filtered { f -> CLAIM_REWARDS_FUNCTION(f) || CLAIM_ALL_REWARDS_FUNCTION(f) } {
 
     setup(e);
     setupUser(e, to);
@@ -865,9 +905,9 @@ rule claimRewardsTransferFunds(method f, env e, address user, address[] assets, 
     uint256 accruedBefore = getAssetRewardUserAccrued(e.msg.sender, ATokenAddress, rewardTokenAddress);
     uint256 rewardsBefore = rewardTokenAddress.balanceOf(e, to);
 
-    if(CLAIM_REWARDS(f)) {
+    if(CLAIM_REWARDS_FUNCTION(f)) {
         claimRewards(e, assets, amount, to, reward);
-    } else if (CLAIM_ALL_REWARDS(f)) {
+    } else if (CLAIM_ALL_REWARDS_FUNCTION(f)) {
         require accruedBefore == amount;
         claimAllRewards(e, assets, to);
     }
@@ -933,6 +973,24 @@ rule claimRewardsInternalIntegrity(env e, address[] assets, uint256 amount, addr
     uint256 difference = accruedBefore > amount ? require_uint256(accruedBefore - amount) : 0;
     assert !reverted && amount != 0 && accruedBefore > amount 
         => totalRewards == require_uint256(accruedBefore - difference) && accrued0After == difference;
+}
+
+// [RewardsController_107 67] _claimRewards() do not trigger transferFunds() when totalRewards is zero
+rule claimRewardsInternalNotTransferZeroFunds(env e, address[] assets, uint256 amount, address claimer, address user, address to, address reward) {
+    
+    setup(e);
+    setupUser(e, user);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    require reward == rewardTokenAddress;
+
+    ghostTransferStrategyRead = false;
+
+    uint256 totalRewards = claimRewardsHarness@withrevert(e, assets, amount, claimer, user, to, reward);
+    bool reverted = lastReverted;
+
+    assert !reverted && totalRewards == 0 => ghostTransferStrategyRead == false;
 }
 
 // [RewardsController_107 47] _claimRewards() amount greater than accrued
@@ -1212,9 +1270,14 @@ rule getUserAccruedRewardsIntegrity(env e, address user, address asset, address 
 // [participants 112] setDistributionEnd() integrity
 rule setDistributionEndIntegrity(env e, address asset, address reward, address user, uint32 newDistributionEnd) {
 
-    setDistributionEnd(e, asset, reward, newDistributionEnd);
+    require e.msg.sender == getEmissionManager();
 
-    assert require_uint256(newDistributionEnd) == getAssetRewardDistributionEnd(asset, reward);   
+    setupEssential(e);
+
+    setDistributionEnd@withrevert(e, asset, reward, newDistributionEnd);
+    bool reverted = lastReverted;
+
+    assert !reverted && require_uint256(newDistributionEnd) == getAssetRewardDistributionEnd(asset, reward);   
 } 
 
 // [participants 113-115] getUserRewards() integrity`
@@ -1399,6 +1462,31 @@ rule updateUserDataIntegrity(env e, address asset, address reward, address user,
     assert !dataUpdated || userBalance == 0 => accruedAfter == accruedBefore && rewardsAccrued == 0;
 }
 
+// [RewardsDistributor_181 105] _updateUserData() don't update storage when userBalance is zero
+rule updateUserDataNotProcessZeroUserBalance(env e, address asset, address reward, address user, uint256 userBalance, uint256 newAssetIndex, uint256 assetUnit) {
+
+    setup(e);
+    setupUser(e, user);
+
+    require asset == ATokenAddress;
+    require reward == rewardTokenAddress;
+    require newAssetIndex < MAX_UINT104();
+
+    setupTokenDecimals(asset); 
+    uint256 decimals = getAssetDecimals(asset);
+    require assetUnit == require_uint256(10 ^ decimals);
+
+    uint256 index = getAssetRewardUserIndex(user, asset, reward);
+    require index <= newAssetIndex;
+
+    require userBalance == 0;
+    ghostUsersDataAccruedWrite = false;
+
+    updateUserDataHarness(e, asset, reward, user, userBalance, newAssetIndex, assetUnit);
+
+    assert ghostUsersDataAccruedWrite == false;
+}   
+
 // [participants 179-183] _updateData() integrity
 rule updateDataIntegrity(env e, address asset, address user, uint256 userBalance, uint256 totalSupply) {
 
@@ -1511,7 +1599,7 @@ rule getPendingRewardsIntegrity(env e, address user, address reward, address ass
     assert !lastReverted => expectedRewards == rewards;
 }
 
-// [participants 175-178, RewardsDistributor_181 133] _getUserReward() integrity
+// [participants 175-178] _getUserReward() integrity
 rule getUserRewardIntegrity(env e, address[] assets, address user, address reward) {
 
     setup(e);
@@ -1531,4 +1619,96 @@ rule getUserRewardIntegrity(env e, address[] assets, address user, address rewar
     uint256 rewards = getUserRewards(e, assets, user, reward);
 
     assert userBalance == 0 ? rewards == accruedRewards : rewards == require_uint256(accruedRewards + pendingRewards);
+}
+
+// [RewardsDistributor_181 133] _getUserReward() when userBalance is zero
+rule getUserRewardZeroUserBalance(env e, address[] assets, address user, address reward) {
+
+    setup(e);
+    setupUser(e, user);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    setupTokenDecimals(assets[0]);
+    require reward == rewardTokenAddress;
+
+    require ATokenAddress.scaledBalanceOf(e, user) == 0;
+    require ghostUsersDataIndexRead == false;
+
+    getUserRewards(e, assets, user, reward);
+
+    // Don't touch index when zero balance
+    assert ghostUsersDataIndexRead == false;
+}
+
+// [RewardsDistributor_181 24] getAllUserRewards() when userBalance is zero
+rule getAllUserRewardsZeroUserBalance(env e, address[] assets, address user) {
+
+    setup(e);
+    setupUser(e, user);
+
+    require assets.length == 1;
+    require assets[0] == ATokenAddress;
+    setupTokenDecimals(assets[0]);
+
+    require ATokenAddress.scaledBalanceOf(e, user) == 0;
+    require ghostUsersDataIndexRead == false;
+
+    getAllUserRewards(e, assets, user);
+
+    // Don't touch index when zero balance
+    assert ghostUsersDataIndexRead == false;
+}
+
+// [participants 190-197; RewardsController_107 3,21,24,30,33; RewardsDistributor_181 21,39,41] possibly not revert
+rule possiblyNotRevert(env e, method f, calldataarg args) filtered { f -> POSSIBLY_NOT_REVERTED_FUNCTIONS(f) } {
+
+    /*
+    POSSIBLY_NOT_REVERTED_FUNCTIONS:
+    - configureAssets: participants 190
+    - handleAction: participants 191
+    - claimRewards: participants 192
+    - claimRewardsOnBehalf: RewardsController_107 3,21,24
+    - claimRewardsToSelf: participants 193
+    - claimAllRewards: participants 194
+    - claimAllRewardsOnBehalf: RewardsController_107 3,30,33
+    - claimAllRewardsToSelf: participants 195
+    - getAssetIndex: participants 196
+    - getUserRewards: participants 197
+    - getAllUserRewards: RewardsDistributor_181 21
+    - setEmissionPerSecond: RewardsDistributor_181 39,41
+    */
+
+    setup(e);
+
+    if(f.selector == sig:setEmissionPerSecond(address, address[], uint88[]).selector) {
+
+        address asset;
+        address[] rewards;
+        uint88[] newEmissionsPerSecond;
+        
+        require asset == ATokenAddress;
+        require rewards.length == 1;
+        require rewards[0] == rewardTokenAddress;
+        require newEmissionsPerSecond.length == rewards.length;  
+
+        setEmissionPerSecond@withrevert(e, asset, rewards, newEmissionsPerSecond);
+
+    }
+    else if(f.selector == sig:getAllUserRewards(address[], address).selector) {
+        
+        address[] assets;
+        address user;
+
+        require assets.length == 1;
+        require assets[0] == ATokenAddress;
+        setupUser(e, user);
+        
+        getAllUserRewards@withrevert(e, assets, user);
+
+    } else {
+        f@withrevert(e, args);
+    }
+
+    satisfy(!lastReverted);
 }
