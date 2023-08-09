@@ -99,9 +99,9 @@ contract RewardsControllerHarness is RewardsController {
         return EMISSION_MANAGER;
     }
 
-    function getUserAssetBalanceHarness(address[] calldata assets, address user) external view returns (address, uint256, uint256) {
+    function getUserAssetBalanceHarness(address[] calldata assets, address user, uint256 i) external view returns (address, uint256, uint256) {
         RewardsDataTypes.UserAssetBalance[] memory userAssetBalances = _getUserAssetBalances(assets, user);
-        return (userAssetBalances[0].asset, userAssetBalances[0].userBalance, userAssetBalances[0].totalSupply);
+        return (userAssetBalances[i].asset, userAssetBalances[i].userBalance, userAssetBalances[i].totalSupply);
     }
 
     function getAssetIndexHarness(address asset, address reward) external view returns (uint256, uint256) {
@@ -116,6 +116,20 @@ contract RewardsControllerHarness is RewardsController {
  
     function getUserRewardsHarness(address[] calldata assets, address user, address reward) external view returns (uint256) {
         return _getUserReward(user, reward, _getUserAssetBalances(assets, user));
+    }
+
+    function getUserAssetBalancesHarnessSum(address[] calldata assets, address user) external view returns (uint256 sum) {
+        RewardsDataTypes.UserAssetBalance[] memory userAssetBalances = _getUserAssetBalances(assets, user);
+        for(uint256 i; i < userAssetBalances.length; i++) {
+            sum += userAssetBalances[i].userBalance;
+        }
+    }
+
+    function getUserAssetBalancesSum(address[] calldata assets, address user) external view returns (uint256 sum) {
+        for (uint256 i; i < assets.length; ++i) {
+            (uint256 balance, ) = IScaledBalanceToken(assets[i]).getScaledUserBalanceAndSupply(user);
+            sum += balance;
+        }
     }
 
     function getRewardsHarness(uint256 userBalance, uint256 reserveIndex, uint256 userIndex, uint256 assetUnit) external view returns (uint256) {
