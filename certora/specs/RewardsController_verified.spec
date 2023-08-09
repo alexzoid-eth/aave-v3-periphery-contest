@@ -1134,7 +1134,6 @@ rule getAssetIndexInternalReturnSameIndex(env e, address asset, address reward) 
     uint256 lastUpdateTimestamp = getAssetRewardLastUpdateTimestamp(asset, reward);
     uint256 distributionEnd = getAssetRewardDistributionEnd(asset, reward);
 
-    // TODO: as invariant
     require e.block.timestamp >= lastUpdateTimestamp;
 
     uint256 indexOld;
@@ -1160,7 +1159,6 @@ rule getAssetIndexInternalIntegrity(env e, address asset, address reward) {
     uint256 lastUpdateTimestamp = getAssetRewardLastUpdateTimestamp(asset, reward);
     uint256 distributionEnd = getAssetRewardDistributionEnd(asset, reward);
 
-    // TODO: as invariant
     require e.block.timestamp >= lastUpdateTimestamp;
 
     uint256 indexOld;
@@ -1290,7 +1288,7 @@ rule setEmissionPerSecondArraysEqLength(env e, address asset, address[] rewards,
     assert rewards.length != newEmissionsPerSecond.length => lastReverted; // bug137
 }
 
-// [participants 138-143, RewardsDistributor_181 39] setEmissionPerSecond() integrity
+// [participants 138-143] setEmissionPerSecond() integrity
 rule setEmissionPerSecondIntegrity(env e, address asset, address[] rewards, uint88[] newEmissionsPerSecond) {
 
     setup(e);
@@ -1318,12 +1316,6 @@ rule setEmissionPerSecondIntegrity(env e, address asset, address[] rewards, uint
     // When reverted
     assert zeroDecimals => reverted; // bug138
     assert zeroLastUpdateTimestamp => reverted; // bug139
-    // TODO: another strange revert
-    /*assert reverted => 
-        zeroDecimals 
-        || zeroLastUpdateTimestamp
-        || e.msg.sender != getEmissionManager()
-        || !VALID_DECIMALS(decimals); // RewardsDistributor_181/bug39 */
 
     assert !reverted => getAssetRewardEmissionPerSecond(asset, rewardTokenAddress) == require_uint256(newEmissionsPerSecond[0]); // bug140
 
@@ -1390,7 +1382,6 @@ rule updateUserDataIntegrity(env e, address asset, address reward, address user,
     uint256 rewardsAccrued;
     bool dataUpdated;
     rewardsAccrued, dataUpdated = updateUserDataHarness(e, asset, reward, user, userBalance, newAssetIndex, assetUnit);
-    // TODO: should not revert
 
     uint256 accruedAfter = getAssetRewardUserAccrued(user, asset, reward);
 
@@ -1487,7 +1478,6 @@ rule getRewardsIntegrity(uint256 userBalance, uint256 reserveIndex, uint256 user
     // Division by zero
     require assetUnit != 0;
 
-    // TODO: as invariant
     // Underflow/overflow
     require reserveIndex >= userIndex;
     require require_uint256(userBalance * (reserveIndex - userIndex)) < MAX_UINT256();
