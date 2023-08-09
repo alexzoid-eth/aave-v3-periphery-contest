@@ -1,8 +1,21 @@
 import "RewardsController_base.spec";
 
+using TransferStrategyHarness as transferStrategyAddress;
 using DummyERC20_ATokenB as ATokenBAddress;
 
 ////////////////// FUNCTIONS //////////////////////
+
+function setupUser(env e, address user) {
+    require user != 0;
+    require user != currentContract;
+    require user != ATokenAddress;
+    require user != ATokenBAddress;
+    require user != rewardTokenAddress;
+    require user != transferStrategyAddress;
+
+    require ATokenAddress.scaledBalanceOf(e, user) <= ATokenAddress.scaledTotalSupply(e);
+    require ATokenBAddress.scaledBalanceOf(e, user) <= ATokenBAddress.scaledTotalSupply(e);
+}
 
 function setup(env e) {
 

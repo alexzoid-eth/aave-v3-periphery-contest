@@ -1,6 +1,5 @@
 using DummyERC20_AToken as ATokenAddress;
 using DummyERC20_rewardToken as rewardTokenAddress;
-using TransferStrategyHarness as transferStrategyAddress;
 
 ///////////////// METHODS //////////////////////
 
@@ -43,6 +42,7 @@ methods {
     function updateRewardDataHarness(address, address, uint256, uint256) external;
     function updateUserDataHarness(address, address, address, uint256, uint256, uint256) external returns (uint256, bool);
     function configureAssetsHarness(uint88, uint32, address, address, address, address) external;
+    function configureAssetsHarness2rewards(uint88, uint32, address, address, address, address, address) external;
     function claimRewardsHarness(address[], uint256, address, address, address, address) external returns (uint256);
     function claimAllRewardsHarness(address[], address, address, address) external returns (address[], uint256[]);
     function transferRewardsHarness(address, address, uint256) external;
@@ -135,6 +135,7 @@ definition HARNESS_FUNCTIONS(method f) returns bool =
     || f.selector == sig:updateRewardDataHarness(address, address, uint256, uint256).selector
     || f.selector == sig:updateUserDataHarness(address, address, address, uint256, uint256, uint256).selector
     || f.selector == sig:configureAssetsHarness(uint88, uint32, address, address, address, address).selector
+    || f.selector == sig:configureAssetsHarness2rewards(uint88, uint32, address, address, address, address, address).selector
     || f.selector == sig:claimRewardsHarness(address[], uint256, address, address, address, address).selector
     || f.selector == sig:claimAllRewardsHarness(address[], address, address, address).selector
     || f.selector == sig:transferRewardsHarness(address, address, uint256).selector;
@@ -204,16 +205,6 @@ definition MAX_UINT256() returns uint256 = 0xfffffffffffffffffffffffffffffffffff
 ////////////////// FUNCTIONS //////////////////////
 
 // CVL functions for precondition assumptions 
-
-function setupUser(env e, address user) {
-    require user != 0;
-    require user != currentContract;
-    require user != ATokenAddress;
-    require user != rewardTokenAddress;
-    require user != transferStrategyAddress;
-
-    require ATokenAddress.scaledBalanceOf(e, user) <= ATokenAddress.scaledTotalSupply(e);
-}
 
 function setupTokenDecimals(address token) {
     require VALID_DECIMALS(getAssetDecimals(token));

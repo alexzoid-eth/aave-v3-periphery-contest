@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..5c0387f 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -284,7 +284,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+ 
+     for (uint256 i = 0; i < assets.length; i++) {
+       address asset = assets[i];
+-      for (uint256 j = 0; j < rewardsListLength; j++) {
++      for (uint256 j = 0; j < rewardsListLength; assert(true)) {
+         if (rewardsList[j] == address(0)) {
+           rewardsList[j] = _rewardsList[j];
+         }

@@ -1,6 +1,18 @@
 import "RewardsController_base.spec";
 
+using TransferStrategyHarness as transferStrategyAddress;
+
 ////////////////// FUNCTIONS //////////////////////
+
+function setupUser(env e, address user) {
+    require user != 0;
+    require user != currentContract;
+    require user != ATokenAddress;
+    require user != rewardTokenAddress;
+    require user != transferStrategyAddress;
+
+    require ATokenAddress.scaledBalanceOf(e, user) <= ATokenAddress.scaledTotalSupply(e);
+}
 
 function setup(env e) {
 

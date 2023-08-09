@@ -182,6 +182,31 @@ contract RewardsControllerHarness is RewardsController {
         this.configureAssets(config);
     }
 
+    function configureAssetsHarness2rewards(
+        uint88 emissionPerSecond, 
+        uint32 distributionEnd,
+        address asset,
+        address reward,
+        address reward2,
+        address transferStrategy,
+        address rewardOracle
+    ) external {
+        RewardsDataTypes.RewardsConfigInput[] memory config = new RewardsDataTypes.RewardsConfigInput[](2);
+        config[0].emissionPerSecond = emissionPerSecond;
+        config[0].distributionEnd = distributionEnd;
+        config[0].asset = asset;
+        config[0].reward = reward;
+        config[0].transferStrategy = ITransferStrategyBase(transferStrategy);
+        config[0].rewardOracle = IEACAggregatorProxy(rewardOracle);
+        config[1].emissionPerSecond = emissionPerSecond;
+        config[1].distributionEnd = distributionEnd;
+        config[1].asset = asset;
+        config[1].reward = reward2;
+        config[1].transferStrategy = ITransferStrategyBase(transferStrategy);
+        config[1].rewardOracle = IEACAggregatorProxy(rewardOracle);
+        this.configureAssets(config);
+    }
+
     function claimRewardsHarness(
         address[] calldata assets, 
         uint256 amount,
