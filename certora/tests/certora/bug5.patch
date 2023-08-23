@@ -1,7 +1,7 @@
-diff --git a/contracts/rewards/RewardsController.sol b/certora/tests/certora/RewardsController/RewardsController17.sol
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
 index cfa4d82..25d9e15 100644
 --- a/contracts/rewards/RewardsController.sol
-+++ b/certora/tests/certora/RewardsController/RewardsController17.sol
++++ b/contracts/rewards/RewardsController.sol
 @@ -291,9 +291,14 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
          uint256 rewardAmount = _assets[asset].rewards[rewardsList[j]].usersData[user].accrued;
          if (rewardAmount != 0) {
