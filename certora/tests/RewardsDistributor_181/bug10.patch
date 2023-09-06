@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..fd77fd5 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -93,7 +93,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     address[] memory availableRewards = new address[](rewardsCount);
+ 
+     for (uint128 i = 0; i < rewardsCount; i++) {
+-      availableRewards[i] = _assets[asset].availableRewards[i];
++      /// DeleteExpressionMutation(`availableRewards[i] = _assets[asset].availableRewards[i]` |==> `assert(true)`) of: `availableRewards[i] = _assets[asset].availableRewards[i];`
++      assert(true);
+     }
+     return availableRewards;
+   }

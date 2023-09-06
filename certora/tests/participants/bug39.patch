@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..2a16d35 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -88,7 +88,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+       // Set reward oracle, enforces input oracle to have latestPrice function
+       _setRewardOracle(config[i].reward, config[i].rewardOracle);
+     }
+-    _configureAssets(config);
++    //_configureAssets(config);
+   }
+ 
+   /// @inheritdoc IRewardsController

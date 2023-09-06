@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..c232f20 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -78,7 +78,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     override
+     onlyEmissionManager
+   {
+-    for (uint256 i = 0; i < config.length; i++) {
++    /// UnaryOperatorMutation(`++` |==> `--`) of: `for (uint256 i = 0; i < config.length; i++) {`
++    for (uint256 i = 0; i < config.length; i--) {
+       // Get the current Scaled Total Supply of AToken or Debt token
+       config[i].totalSupply = IScaledBalanceToken(config[i].asset).scaledTotalSupply();
+ 

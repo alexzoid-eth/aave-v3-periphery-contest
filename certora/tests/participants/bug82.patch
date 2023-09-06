@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..6b6a27c 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -100,7 +100,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+ 
+   /// @inheritdoc IRewardsDistributor
+   function getRewardsList() external view override returns (address[] memory) {
+-    return _rewardsList;
++    return _assetsList;
+   }
+ 
+   /// @inheritdoc IRewardsDistributor

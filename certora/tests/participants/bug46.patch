@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..95c0c42 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -269,7 +269,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       uint88 oldEmissionsPerSecond = rewardConfig.emissionPerSecond;
+       uint32 oldDistributionEnd = rewardConfig.distributionEnd;
+       rewardConfig.emissionPerSecond = rewardsInput[i].emissionPerSecond;
+-      rewardConfig.distributionEnd = rewardsInput[i].distributionEnd;
++      rewardConfig.distributionEnd = 0;
+ 
+       emit AssetConfigUpdated(
+         rewardsInput[i].asset,

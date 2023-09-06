@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..a268774 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -295,7 +295,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+         }
+       }
+     }
+-    for (uint256 i = 0; i < rewardsListLength; i++) {
++    /// SwapArgumentsOperatorMutation(`i < rewardsListLength` |==> `rewardsListLength < i`) of: `for (uint256 i = 0; i < rewardsListLength; i++) {`
++    for (uint256 i = 0; rewardsListLength < i; i++) {
+       _transferRewards(to, rewardsList[i], claimedAmounts[i]);
+       emit RewardsClaimed(user, rewardsList[i], to, claimer, claimedAmounts[i]);
+     }

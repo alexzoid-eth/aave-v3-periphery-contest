@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..e65a44e 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -249,7 +249,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+         _assets[rewardsInput[i].asset].availableRewards[
+           _assets[rewardsInput[i].asset].availableRewardsCount
+         ] = rewardsInput[i].reward;
+-        _assets[rewardsInput[i].asset].availableRewardsCount++;
++        _assets[rewardsInput[i].asset].availableRewardsCount += 2;
+       }
+ 
+       // Add reward address to global rewards list if still not enabled

@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..e85de0d 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -83,7 +83,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+       config[i].totalSupply = IScaledBalanceToken(config[i].asset).scaledTotalSupply();
+ 
+       // Install TransferStrategy logic at IncentivesController
+-      _installTransferStrategy(config[i].reward, config[i].transferStrategy);
++      /// DeleteExpressionMutation(`_installTransferStrategy(config[i].reward, config[i].transferStrategy)` |==> `assert(true)`) of: `_installTransferStrategy(config[i].reward, config[i].transferStrategy);`
++      assert(true);
+ 
+       // Set reward oracle, enforces input oracle to have latestPrice function
+       _setRewardOracle(config[i].reward, config[i].rewardOracle);

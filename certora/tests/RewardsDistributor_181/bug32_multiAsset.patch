@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..92d7a62 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -151,7 +151,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     unclaimedAmounts = new uint256[](rewardsList.length);
+ 
+     // Add unrealized rewards from user to unclaimedRewards
+-    for (uint256 i = 0; i < userAssetBalances.length; i++) {
++    /// DeleteExpressionMutation(`i++` |==> `assert(true)`) of: `for (uint256 i = 0; i < userAssetBalances.length; i++) {`
++    for (uint256 i = 0; i < userAssetBalances.length; assert(true)) {
+       for (uint256 r = 0; r < rewardsList.length; r++) {
+         rewardsList[r] = _rewardsList[r];
+         unclaimedAmounts[r] += _assets[userAssetBalances[i].asset]

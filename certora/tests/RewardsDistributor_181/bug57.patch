@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..23e4632 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -245,7 +245,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       ];
+ 
+       // Add reward address to asset available rewards if latestUpdateTimestamp is zero
+-      if (rewardConfig.lastUpdateTimestamp == 0) {
++      /// IfStatementMutation(`rewardConfig.lastUpdateTimestamp == 0` |==> `true`) of: `if (rewardConfig.lastUpdateTimestamp == 0) {`
++      if (true) {
+         _assets[rewardsInput[i].asset].availableRewards[
+           _assets[rewardsInput[i].asset].availableRewardsCount
+         ] = rewardsInput[i].reward;

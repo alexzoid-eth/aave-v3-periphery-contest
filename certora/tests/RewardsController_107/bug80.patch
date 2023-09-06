@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..9baaaf2 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -291,7 +291,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+         uint256 rewardAmount = _assets[asset].rewards[rewardsList[j]].usersData[user].accrued;
+         if (rewardAmount != 0) {
+           claimedAmounts[j] += rewardAmount;
+-          _assets[asset].rewards[rewardsList[j]].usersData[user].accrued = 0;
++          /// DeleteExpressionMutation(`_assets[asset].rewards[rewardsList[j]].usersData[user].accrued = 0` |==> `assert(true)`) of: `_assets[asset].rewards[rewardsList[j]].usersData[user].accrued = 0;`
++          assert(true);
+         }
+       }
+     }

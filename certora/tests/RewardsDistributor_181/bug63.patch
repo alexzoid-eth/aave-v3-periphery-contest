@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..98834cb 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -254,7 +254,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+ 
+       // Add reward address to global rewards list if still not enabled
+       if (_isRewardEnabled[rewardsInput[i].reward] == false) {
+-        _isRewardEnabled[rewardsInput[i].reward] = true;
++        /// DeleteExpressionMutation(`_isRewardEnabled[rewardsInput[i].reward] = true` |==> `assert(true)`) of: `_isRewardEnabled[rewardsInput[i].reward] = true;`
++        assert(true);
+         _rewardsList.push(rewardsInput[i].reward);
+       }
+ 

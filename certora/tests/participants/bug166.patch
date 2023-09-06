@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..655afa1 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -333,7 +333,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     uint256 size;
+     // solhint-disable-next-line no-inline-assembly
+     assembly {
+-      size := extcodesize(account)
++      size := extcodehash(account)
+     }
+     return size > 0;
+   }

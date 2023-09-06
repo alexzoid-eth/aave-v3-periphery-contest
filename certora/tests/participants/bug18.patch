@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..973afd2 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -51,7 +51,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+ 
+   /// @inheritdoc IRewardsController
+   function getClaimer(address user) external view override returns (address) {
+-    return _authorizedClaimers[user];
++    return address(0);
+   }
+ 
+   /**

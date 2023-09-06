@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..362f46f 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -170,7 +170,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     onlyAuthorizedClaimers(msg.sender, user)
+     returns (address[] memory rewardsList, uint256[] memory claimedAmounts)
+   {
+-    require(user != address(0), 'INVALID_USER_ADDRESS');
++    /// DeleteExpressionMutation(`require(user != address(0), 'INVALID_USER_ADDRESS')` |==> `assert(true)`) of: `require(user != address(0), 'INVALID_USER_ADDRESS');`
++    assert(true);
+     require(to != address(0), 'INVALID_TO_ADDRESS');
+     return _claimAllRewards(assets, msg.sender, user, to);
+   }

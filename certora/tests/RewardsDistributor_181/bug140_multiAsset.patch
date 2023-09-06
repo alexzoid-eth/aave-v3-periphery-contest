@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..1eec858 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -423,7 +423,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     RewardsDataTypes.UserAssetBalance[] memory userAssetBalances
+   ) internal view returns (uint256 unclaimedRewards) {
+     // Add unrealized rewards
+-    for (uint256 i = 0; i < userAssetBalances.length; i++) {
++    /// DeleteExpressionMutation(`i++` |==> `assert(true)`) of: `for (uint256 i = 0; i < userAssetBalances.length; i++) {`
++    for (uint256 i = 0; i < userAssetBalances.length; assert(true)) {
+       if (userAssetBalances[i].userBalance == 0) {
+         unclaimedRewards += _assets[userAssetBalances[i].asset]
+           .rewards[reward]

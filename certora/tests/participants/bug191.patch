@@ -1,0 +1,30 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..62d579d 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -113,6 +113,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     uint256 totalSupply,
+     uint256 userBalance
+   ) external override {
++    assert(false);
+     _updateData(msg.sender, user, userBalance, totalSupply);
+   }
+ 
+@@ -191,7 +192,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+   }
+ 
+   /**
+-   * @dev Get user balances and total supply of all the assets specified by the assets parameter
++   * @dev Get user balances and total supply omodifier onlyAuthorizedClaimers(address claimer, address user) {f all the assets specified by the assets parameter
+    * @param assets List of assets to retrieve user balance and total supply
+    * @param user Address of the user
+    * @return userAssetBalances contains a list of structs with user balance and total supply of the given assets
+@@ -263,7 +264,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+   /**
+    * @dev Claims one type of reward for a user on behalf, on all the assets of the pool, accumulating the pending rewards.
+    * @param assets List of assets to check eligible distributions before claiming rewards
+-   * @param claimer Address of the claimer on behalf of user
++   * @param claimer Addressreturns (address[] memory rewardsList, uint256[] memory claimedAmounts) of the claimer on behalf of user
+    * @param user Address to check and claim rewards
+    * @param to Address that will be receiving the rewards
+    * @return

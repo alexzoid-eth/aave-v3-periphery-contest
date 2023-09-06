@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..3774d4a 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -104,7 +104,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     external
+     onlyEmissionManager
+   {
+-    _setRewardOracle(reward, rewardOracle);
++    /// DeleteExpressionMutation(`_setRewardOracle(reward, rewardOracle)` |==> `assert(true)`) of: `_setRewardOracle(reward, rewardOracle);`
++    assert(true);
+   }
+ 
+   /// @inheritdoc IRewardsController

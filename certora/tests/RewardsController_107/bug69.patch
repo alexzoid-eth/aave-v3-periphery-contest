@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..63098fa 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -277,7 +277,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     address to
+   ) internal returns (address[] memory rewardsList, uint256[] memory claimedAmounts) {
+     uint256 rewardsListLength = _rewardsList.length;
+-    rewardsList = new address[](rewardsListLength);
++    /// DeleteExpressionMutation(`rewardsList = new address[](rewardsListLength)` |==> `assert(true)`) of: `rewardsList = new address[](rewardsListLength);`
++    assert(true);
+     claimedAmounts = new uint256[](rewardsListLength);
+ 
+     _updateDataMultiple(user, _getUserAssetBalances(assets, user));

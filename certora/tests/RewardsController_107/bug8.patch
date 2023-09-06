@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..cc9a6da 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -86,7 +86,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+       _installTransferStrategy(config[i].reward, config[i].transferStrategy);
+ 
+       // Set reward oracle, enforces input oracle to have latestPrice function
+-      _setRewardOracle(config[i].reward, config[i].rewardOracle);
++      /// DeleteExpressionMutation(`_setRewardOracle(config[i].reward, config[i].rewardOracle)` |==> `assert(true)`) of: `_setRewardOracle(config[i].reward, config[i].rewardOracle);`
++      assert(true);
+     }
+     _configureAssets(config);
+   }

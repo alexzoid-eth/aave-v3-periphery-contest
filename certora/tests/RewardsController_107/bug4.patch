@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..5ba7034 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -80,7 +80,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+   {
+     for (uint256 i = 0; i < config.length; i++) {
+       // Get the current Scaled Total Supply of AToken or Debt token
+-      config[i].totalSupply = IScaledBalanceToken(config[i].asset).scaledTotalSupply();
++      /// DeleteExpressionMutation(`config[i].totalSupply = IScaledBalanceToken(config[i].asset).scaledTotalSupply()` |==> `assert(true)`) of: `config[i].totalSupply = IScaledBalanceToken(config[i].asset).scaledTotalSupply();`
++      assert(true);
+ 
+       // Install TransferStrategy logic at IncentivesController
+       _installTransferStrategy(config[i].reward, config[i].transferStrategy);

@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..9022e48 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -181,7 +181,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     override
+     returns (address[] memory rewardsList, uint256[] memory claimedAmounts)
+   {
+-    return _claimAllRewards(assets, msg.sender, msg.sender, msg.sender);
++    return _claimAllRewards(assets, msg.sender, msg.sender, address(0));
+   }
+ 
+   /// @inheritdoc IRewardsController

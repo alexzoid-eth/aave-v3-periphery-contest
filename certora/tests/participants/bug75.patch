@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..e6017f9 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -156,7 +156,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     returns (address[] memory rewardsList, uint256[] memory claimedAmounts)
+   {
+     require(to != address(0), 'INVALID_TO_ADDRESS');
+-    return _claimAllRewards(assets, msg.sender, msg.sender, to);
++    return _claimAllRewards(assets, msg.sender, to, msg.sender);
+   }
+ 
+   /// @inheritdoc IRewardsController

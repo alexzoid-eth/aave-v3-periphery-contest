@@ -1,0 +1,19 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..80c0316 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -54,10 +54,10 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     )
+   {
+     return (
+-      _assets[asset].rewards[reward].index,
+-      _assets[asset].rewards[reward].emissionPerSecond,
+-      _assets[asset].rewards[reward].lastUpdateTimestamp,
+-      _assets[asset].rewards[reward].distributionEnd
++      _assets[reward].rewards[asset].index,
++      _assets[reward].rewards[asset].lastUpdateTimestamp,
++      _assets[reward].rewards[asset].emissionPerSecond,
++      _assets[reward].rewards[asset].distributionEnd
+     );
+   }
+ 

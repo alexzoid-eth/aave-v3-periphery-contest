@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..6c4af25 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -299,7 +299,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     (uint256 oldIndex, uint256 newIndex) = _getAssetIndex(rewardData, totalSupply, assetUnit);
+     bool indexUpdated;
+     if (newIndex != oldIndex) {
+-      require(newIndex <= type(uint104).max, 'INDEX_OVERFLOW');
++      /// RequireMutation(`newIndex <= type(uint104).max` |==> `true`) of: `require(newIndex <= type(uint104).max, 'INDEX_OVERFLOW');`
++      require(true, 'INDEX_OVERFLOW');
+       indexUpdated = true;
+ 
+       //optimization: storing one after another saves one SSTORE

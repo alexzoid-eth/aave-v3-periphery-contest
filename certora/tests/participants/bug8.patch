@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..fdfd054 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -102,7 +102,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+   /// @inheritdoc IRewardsController
+   function setRewardOracle(address reward, IEACAggregatorProxy rewardOracle)
+     external
+-    onlyEmissionManager
++    // onlyEmissionManager
+   {
+     _setRewardOracle(reward, rewardOracle);
+   }

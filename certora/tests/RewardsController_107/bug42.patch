@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..8dd2982 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -235,7 +235,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     }
+     uint256 totalRewards;
+ 
+-    _updateDataMultiple(user, _getUserAssetBalances(assets, user));
++    /// DeleteExpressionMutation(`_updateDataMultiple(user, _getUserAssetBalances(assets, user))` |==> `assert(true)`) of: `_updateDataMultiple(user, _getUserAssetBalances(assets, user));`
++    assert(true);
+     for (uint256 i = 0; i < assets.length; i++) {
+       address asset = assets[i];
+       totalRewards += _assets[asset].rewards[reward].usersData[user].accrued;

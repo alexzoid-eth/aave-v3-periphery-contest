@@ -1,0 +1,12 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..3a32dfe 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -146,6 +146,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     uint256 amount,
+     address reward
+   ) external override returns (uint256) {
++    assert(false);
+     return _claimRewards(assets, amount, msg.sender, msg.sender, msg.sender, reward);
+   }
+ 

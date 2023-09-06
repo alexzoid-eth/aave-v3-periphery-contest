@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..625f257 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -250,7 +250,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+       }
+     }
+ 
+-    if (totalRewards == 0) {
++    /// IfStatementMutation(`totalRewards == 0` |==> `false`) of: `if (totalRewards == 0) {`
++    if (false) {
+       return 0;
+     }
+ 

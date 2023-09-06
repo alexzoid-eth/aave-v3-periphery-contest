@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..972945c 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -317,7 +317,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+ 
+     bool success = transferStrategy.performTransfer(to, reward, amount);
+ 
+-    require(success == true, 'TRANSFER_ERROR');
++    /// RequireMutation(`success == true` |==> `true`) of: `require(success == true, 'TRANSFER_ERROR');`
++    require(true, 'TRANSFER_ERROR');
+   }
+ 
+   /**

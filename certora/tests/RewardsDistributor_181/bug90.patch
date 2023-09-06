@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..b8729e9 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -300,7 +300,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     bool indexUpdated;
+     if (newIndex != oldIndex) {
+       require(newIndex <= type(uint104).max, 'INDEX_OVERFLOW');
+-      indexUpdated = true;
++      /// DeleteExpressionMutation(`indexUpdated = true` |==> `assert(true)`) of: `indexUpdated = true;`
++      assert(true);
+ 
+       //optimization: storing one after another saves one SSTORE
+       rewardData.index = uint104(newIndex);

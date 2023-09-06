@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..2b7bf8e 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -162,7 +162,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+         if (userAssetBalances[i].userBalance == 0) {
+           continue;
+         }
+-        unclaimedAmounts[r] += _getPendingRewards(user, rewardsList[r], userAssetBalances[i]);
++        /// DeleteExpressionMutation(`unclaimedAmounts[r] += _getPendingRewards(user, rewardsList[r], userAssetBalances[i])` |==> `assert(true)`) of: `unclaimedAmounts[r] += _getPendingRewards(user, rewardsList[r], userAssetBalances[i]);`
++        assert(true);
+       }
+     }
+     return (rewardsList, unclaimedAmounts);

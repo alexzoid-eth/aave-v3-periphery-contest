@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..df9ca2a 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -186,7 +186,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+ 
+   /// @inheritdoc IRewardsController
+   function setClaimer(address user, address caller) external override onlyEmissionManager {
+-    _authorizedClaimers[user] = caller;
++    /// DeleteExpressionMutation(`_authorizedClaimers[user] = caller` |==> `assert(true)`) of: `_authorizedClaimers[user] = caller;`
++    assert(true);
+     emit ClaimerSet(user, caller);
+   }
+ 

@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..9cd5696 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -303,7 +303,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       indexUpdated = true;
+ 
+       //optimization: storing one after another saves one SSTORE
+-      rewardData.index = uint104(newIndex);
++      /// DeleteExpressionMutation(`rewardData.index = uint104(newIndex)` |==> `assert(true)`) of: `rewardData.index = uint104(newIndex);`
++      assert(true);
+       rewardData.lastUpdateTimestamp = block.timestamp.toUint32();
+     } else {
+       rewardData.lastUpdateTimestamp = block.timestamp.toUint32();

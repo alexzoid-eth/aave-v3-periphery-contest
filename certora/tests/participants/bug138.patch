@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..b7d3a69 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -200,7 +200,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       RewardsDataTypes.RewardData storage rewardConfig = _assets[asset].rewards[rewards[i]];
+       uint256 decimals = assetConfig.decimals;
+       require(
+-        decimals != 0 && rewardConfig.lastUpdateTimestamp != 0,
++        rewardConfig.lastUpdateTimestamp != 0,
+         'DISTRIBUTION_DOES_NOT_EXIST'
+       );
+ 

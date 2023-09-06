@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..4f1f39f 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -400,7 +400,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+     address user,
+     RewardsDataTypes.UserAssetBalance[] memory userAssetBalances
+   ) internal {
+-    for (uint256 i = 0; i < userAssetBalances.length; i++) {
++    /// DeleteExpressionMutation(`i++` |==> `assert(true)`) of: `for (uint256 i = 0; i < userAssetBalances.length; i++) {`
++    for (uint256 i = 0; i < userAssetBalances.length; assert(true)) {
+       _updateData(
+         userAssetBalances[i].asset,
+         user,

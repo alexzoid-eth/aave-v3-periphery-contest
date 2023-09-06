@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..17ec901 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -113,7 +113,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+     uint256 totalSupply,
+     uint256 userBalance
+   ) external override {
+-    _updateData(msg.sender, user, userBalance, totalSupply);
++    /// DeleteExpressionMutation(`_updateData(msg.sender, user, userBalance, totalSupply)` |==> `assert(true)`) of: `_updateData(msg.sender, user, userBalance, totalSupply);`
++    assert(true);
+   }
+ 
+   /// @inheritdoc IRewardsController

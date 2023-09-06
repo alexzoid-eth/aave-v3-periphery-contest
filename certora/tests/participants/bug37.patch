@@ -1,0 +1,12 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..d209149 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -543,6 +543,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+ 
+   /// @inheritdoc IRewardsDistributor
+   function getEmissionManager() external view returns (address) {
++    assert(false);
+     return EMISSION_MANAGER;
+   }
+ }

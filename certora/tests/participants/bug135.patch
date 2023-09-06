@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..adb208d 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -262,7 +262,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       (uint256 newIndex, ) = _updateRewardData(
+         rewardConfig,
+         rewardsInput[i].totalSupply,
+-        10**decimals
++        decimals
+       );
+ 
+       // Configure emission and distribution end of the reward per asset

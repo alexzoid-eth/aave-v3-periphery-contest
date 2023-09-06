@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..6e22a75 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -432,7 +432,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       } else {
+         unclaimedRewards +=
+           _getPendingRewards(user, reward, userAssetBalances[i]) +
+-          _assets[userAssetBalances[i].asset].rewards[reward].usersData[user].accrued;
++          _assets[userAssetBalances[i].asset].rewards[reward].usersData[user].index;
+       }
+     }
+ 

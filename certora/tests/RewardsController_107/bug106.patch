@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..168ba9b 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -362,7 +362,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+    */
+ 
+   function _setRewardOracle(address reward, IEACAggregatorProxy rewardOracle) internal {
+-    require(rewardOracle.latestAnswer() > 0, 'ORACLE_MUST_RETURN_PRICE');
++    /// SwapArgumentsOperatorMutation(`rewardOracle.latestAnswer() > 0` |==> `0 > rewardOracle.latestAnswer()`) of: `require(rewardOracle.latestAnswer() > 0, 'ORACLE_MUST_RETURN_PRICE');`
++    require(0 > rewardOracle.latestAnswer(), 'ORACLE_MUST_RETURN_PRICE');
+     _rewardOracle[reward] = rewardOracle;
+     emit RewardOracleUpdated(reward, address(rewardOracle));
+   }

@@ -1,0 +1,15 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..dd3ba90 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -404,8 +404,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       _updateData(
+         userAssetBalances[i].asset,
+         user,
+-        userAssetBalances[i].userBalance,
+-        userAssetBalances[i].totalSupply
++        userAssetBalances[i].totalSupply,
++        userAssetBalances[i].userBalance
+       );
+     }
+   }

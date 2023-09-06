@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..bcabe02 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -517,7 +517,8 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+       ? distributionEnd
+       : block.timestamp;
+     uint256 timeDelta = currentTimestamp - lastUpdateTimestamp;
+-    uint256 firstTerm = emissionPerSecond * timeDelta * assetUnit;
++    /// BinaryOpMutation(`*` |==> `%`) of: `uint256 firstTerm = emissionPerSecond * timeDelta * assetUnit;`
++    uint256 firstTerm = emissionPerSecond%timeDelta * assetUnit;
+     assembly {
+       firstTerm := div(firstTerm, totalSupply)
+     }

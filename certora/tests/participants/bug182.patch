@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsDistributor.sol b/contracts/rewards/RewardsDistributor.sol
+index 04d057a..8bf1771 100644
+--- a/contracts/rewards/RewardsDistributor.sol
++++ b/contracts/rewards/RewardsDistributor.sol
+@@ -372,7 +372,7 @@ abstract contract RewardsDistributor is IRewardsDistributor {
+ 
+         (uint256 newAssetIndex, bool rewardDataUpdated) = _updateRewardData(
+           rewardData,
+-          totalSupply,
++          userBalance,
+           assetUnit
+         );
+ 

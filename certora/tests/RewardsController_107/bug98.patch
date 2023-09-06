@@ -1,0 +1,14 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..dff108d 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -346,7 +346,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+   function _installTransferStrategy(address reward, ITransferStrategyBase transferStrategy)
+     internal
+   {
+-    require(address(transferStrategy) != address(0), 'STRATEGY_CAN_NOT_BE_ZERO');
++    /// RequireMutation(`address(transferStrategy) != address(0)` |==> `false`) of: `require(address(transferStrategy) != address(0), 'STRATEGY_CAN_NOT_BE_ZERO');`
++    require(false, 'STRATEGY_CAN_NOT_BE_ZERO');
+     require(_isContract(address(transferStrategy)) == true, 'STRATEGY_MUST_BE_CONTRACT');
+ 
+     _transferStrategy[reward] = transferStrategy;

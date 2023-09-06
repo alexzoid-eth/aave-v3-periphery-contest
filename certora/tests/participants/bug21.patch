@@ -1,0 +1,13 @@
+diff --git a/contracts/rewards/RewardsController.sol b/contracts/rewards/RewardsController.sol
+index cfa4d82..e74f2c7 100644
+--- a/contracts/rewards/RewardsController.sol
++++ b/contracts/rewards/RewardsController.sol
+@@ -69,7 +69,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
+ 
+   /// @inheritdoc IRewardsController
+   function getTransferStrategy(address reward) external view override returns (address) {
+-    return address(_transferStrategy[reward]);
++    return address(_rewardOracle[reward]);
+   }
+ 
+   /// @inheritdoc IRewardsController
